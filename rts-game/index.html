@@ -74,7 +74,7 @@ body.coop #hud2d{right:50%;width:50%}
   <div id="top">
     <span class="chip" id="rM">🔩 0</span><span class="chip" id="rF">🌾 0</span><span class="chip" id="rE">⚡ 0</span><span class="chip" id="rP">👥 0/0</span>
     <span class="chip" id="rW">⏱</span><span class="chip" id="rO">🎯</span>
-    <div id="layers"><button class="btn on" id="lg">🌍 Superfície</button><button class="btn" id="ls">🛰 Órbita</button></div>
+    <div id="layers"><button class="btn" id="bMute" title="Som">🔊</button><button class="btn on" id="lg">🌍 Superfície</button><button class="btn" id="ls">🛰 Órbita</button></div>
   </div>
   <div id="side">
     <button class="btn" id="bBuild" title="Construir (B)">🏗</button>
@@ -314,7 +314,7 @@ const fps={on:false,e:null,third:false,fire:false,inp:{fwd:0,str:0,dyaw:0,dpitch
 const p2={e:null,inp:{fwd:0,str:0,dyaw:0,dpitch:0,pitch:-.12,fire:false,boost:false},resp:0};
 const keys={};
 let actx=null,lastSfx=0;
-function sfx(f,d=.08,type='square',v=.03){if(!actx||S.mute)return;const n=actx.currentTime;if(n-lastSfx<.025)return;lastSfx=n;const o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.setValueAtTime(f,n);o.frequency.exponentialRampToValueAtTime(Math.max(30,f*.4),n+d);g.gain.setValueAtTime(v,n);g.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(g);g.connect(actx.destination);o.start(n);o.stop(n+d)}
+function sfx(f,d=.08,type='square',v=.03){if(!actx||!master||S.mute)return;const n=actx.currentTime;if(n-lastSfx<.025)return;lastSfx=n;const o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.setValueAtTime(f,n);o.frequency.exponentialRampToValueAtTime(Math.max(30,f*.4),n+d);g.gain.setValueAtTime(v,n);g.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(g);g.connect(master);o.start(n);o.stop(n+d)}
 function toast(t){const d=document.createElement('div');d.textContent=t;$('toast').appendChild(d);setTimeout(()=>d.remove(),4000);while($('toast').children.length>4)$('toast').firstChild.remove()}
 
 /* ================= ENTIDADES ================= */
@@ -340,17 +340,17 @@ function syncMesh(e){e.mesh.position.set(e.x,e.y,e.z);e.mesh.rotation.y=e.yaw}
 function ringOf(e){if(!e.ring){const m=new THREE.Mesh(RING_G,new THREE.MeshBasicMaterial({color:0x66ff99,transparent:true,opacity:.9,depthTest:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.y=.4;m.renderOrder=5;e.mesh.add(m);e.ring=m}const s=e.def.r*(e.team===0?rMul(e.type):1)*1.3;e.ring.scale.set(s,s,s);return e.ring}
 function setSel(list){S.sel.forEach(e=>{if(e.ring)e.ring.visible=false});S.sel=list.filter(e=>!e.dead);S.sel.forEach(e=>ringOf(e).visible=true);panelSig=''}
 function refreshType(type){for(const e of ents){if(e.type!==type||e.team!==0)continue;const had=e.ring;scenes[e.layer].remove(e.mesh);const vis=e.mesh.visible;e.mesh=modelFor(DESIGN[type],e.tc);e.mesh.scale.copy(new THREE.Vector3(e.k,e.k*(e.build<1?(.15+.85*e.build):1),e.k));e.mesh.visible=vis;scenes[e.layer].add(e.mesh);e.ring=null;const f=e.hp/e.maxhp;e.sm=sm(e);e.r=e.def.r*rMul(type)*e.k;e.maxhp=e.def.hp*e.sm*(e.def.k==='b'?Math.pow(e.k,1.5):1);e.hp=e.maxhp*f;e.dmg=e.def.dmg*e.sm*(e.def.k==='b'?Math.sqrt(e.k):1);if(S.sel.includes(e))ringOf(e);syncMesh(e)}}
-function boom(x,y,z,r,layer,col=0xffaa33){const m=new THREE.Mesh(GEO.sph,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.9}));m.position.set(x,y+r*.3,z);scenes[layer].add(m);fxs.push({m,t:0,max:.55,r,layer});sfx(120+Math.random()*60,.25,'sawtooth',Math.min(.08,.02+r*.004))}
+function boom(x,y,z,r,layer,col=0xffaa33){const m=new THREE.Mesh(GEO.sph,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.9}));m.position.set(x,y+r*.3,z);scenes[layer].add(m);fxs.push({m,t:0,max:.55,r,layer});boomSnd(x,y,z,r)}
 function kill(e){if(e.dead)return;e.dead=true;boom(e.x,e.y,e.z,e.r*(e.def.k==='b'?1.2:1)+1,e.layer);scenes[e.layer].remove(e.mesh);S.sel=S.sel.filter(s=>s!==e);if(fps.e===e||(INT.on&&INT.m===e)||(pl.e&&pl.e.inside===e))ejectFrom(e);
  if(e.team===1){S.res.m+=Math.round((e.def.cost[0]||40)*.25+8);S.kills++;if(e.def.hq){S.hives--;toast('💥 '+e.def.n+' destruído! Restam '+S.hives);if(S.hives<=0)toast('🏆 Todos os ninhos destruídos! O sandbox continua.')}}
  else{if(e.def.drop||e.def.k==='b')toast('⚠ Perdemos: '+e.def.n);if(e===p2.e){p2.e=null;p2.resp=8}if(e===pl.e){pl.e=null;pl.resp=5}}}
-function dmgTo(t,d,src){if(t.dead||t.build<1&&false)return;t.hp-=d;t.hit=.12;if(t.team===0&&!t.warn){t.warn=1;setTimeout(()=>t.warn=0,6000);if(t.def.k==='b'||t.def.drop){if(S.t-S.lastWarn>5){S.lastWarn=S.t;toast('⚠ Sob ataque: '+t.def.n+' ('+(t.layer==='g'?'Superfície':'Órbita')+')');S.ping={x:t.x,z:t.z,l:t.layer,t:2}}}}
+function dmgTo(t,d,src){if(t.dead||t.build<1&&false)return;t.hp-=d;t.hit=.12;if(t===fps.e)hurtSnd();if(t.team===0&&!t.warn){t.warn=1;setTimeout(()=>t.warn=0,6000);if(t.def.k==='b'||t.def.drop){if(S.t-S.lastWarn>5){S.lastWarn=S.t;toast('⚠ Sob ataque: '+t.def.n+' ('+(t.layer==='g'?'Superfície':'Órbita')+')');S.ping={x:t.x,z:t.z,l:t.layer,t:2}}}}
  if(t.hp<=0)kill(t);else if(t.team===1&&src&&t.def.k==='u'&&!t.order&&t.def.dmg&&!t.tgt)t.tgt=src}
 S.lastWarn=-99;
 const PG=new THREE.BoxGeometry(.22,.22,1.6);const PM=[new THREE.MeshBasicMaterial({color:0x66eeff}),new THREE.MeshBasicMaterial({color:0xff6655}),new THREE.MeshBasicMaterial({color:0xffe066})];
 function shoot(e,t,dir){const d=e.def,fw=new THREE.Vector3(Math.sin(e.yaw),0,Math.cos(e.yaw));const ox=e.x+fw.x*e.r*.7,oz=e.z+fw.z*e.r*.7,oy=e.y+d.my*(d.k==='b'?e.k:1);
  const m=new THREE.Mesh(PG,PM[e.team===0?(e.p2?2:0):1]);const s=clamp(Math.sqrt(e.dmg)/3.2,.6,5);m.scale.set(s,s,s);m.position.set(ox,oy,oz);scenes[e.layer].add(m);
- projs.push({m,x:ox,y:oy,z:oz,t,dir,dmg:e.dmg,team:e.team,layer:e.layer,sp:d.ps,splash:d.splash||0,life:2.2,src:e});sfx(e.layer==='s'?520:340,.07,'square',.012)}
+ projs.push({m,x:ox,y:oy,z:oz,t,dir,dmg:e.dmg,team:e.team,layer:e.layer,sp:d.ps,splash:d.splash||0,life:2.2,src:e});shotSnd(e)}
 function findTarget(e,range){let best=null,bd=1e9;for(const t of A[e.layer][1-e.team]){if(t.dead||t.inside)continue;if(Math.abs(t.y-e.y)>range*.8+t.r)continue;const d=Math.hypot(t.x-e.x,t.z-e.z)-t.r;if(d>range)continue;const sc=d+(t.def.dmg?0:14);if(sc<bd){bd=sc;best=t}}return best}
 function turnTo(e,ang,dt,rate){let df=ang-e.yaw;df=Math.atan2(Math.sin(df),Math.cos(df));e.yaw+=clamp(df,-rate*dt,rate*dt);return df}
 function moveTo(e,x,z,dt,stop){const dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);if(d<=stop)return true;const df=turnTo(e,Math.atan2(dx,dz),dt,e.def.turn);const sp=e.def.sp*Math.max(.25,1-Math.abs(df)/1.6);const st=Math.min(sp*dt,d-stop+.05);const nx=clamp(e.x+Math.sin(e.yaw)*st,-W,W),nz=clamp(e.z+Math.cos(e.yaw)*st,-W,W);if(walkOK(e,nx,nz)){e.x=nx;e.z=nz}else if(walkOK(e,nx,e.z))e.x=nx;else if(walkOK(e,e.x,nz))e.z=nz;return false}
@@ -542,7 +542,7 @@ function landPoint(a,b){let c=[],all=[];for(let i=0;i<NC;i++)for(let j=0;j<NC;j+
 function findLand(x,z,m=2){for(let r=m;r<260;r+=4)for(let k=0;k<12;k++){const a=k/12*6.283+r,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r;if(hgt(px,pz)>.3)return{x:px,z:pz}}return{x:0,z:0}}
 function findWater(x,z){for(let r=15;r<900;r+=14)for(let k=0;k<16;k++){const a=k/16*6.283+r,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r;if(Math.abs(px)<W-20&&Math.abs(pz)<W-20&&hgt(px,pz)<-1.8)return{x:px,z:pz}}return null}
 function walkOK(e,x,z){if(e.fly)return true;const h=hgt(x,z);return e.def.naval?h<-.8:h>-.3}
-function setEntLayer(e,l){if(e.layer===l)return;scenes[e.layer].remove(e.mesh);e.layer=l;scenes[l].add(e.mesh);e.tgt=null}
+function setEntLayer(e,l){if(e.layer===l)return;if(e===fps.e)whoosh();scenes[e.layer].remove(e.mesh);e.layer=l;scenes[l].add(e.mesh);e.tgt=null}
 const fspeed=e=>e.def.sp*((e.def.id==='mother'||e.def.id==='frigate')?5:3.2);
 const pl={e:null,resp:0,auto:false,last:null};
 function atmos(){const g=scenes.g,y=cam1.position.y,k=clamp((y-100)/450,0,1);g.background.setRGB(.45*(1-k),.68*(1-k),.92*(1-k));g.fog.color.copy(g.background);g.fog.density=.0011*(1-k)+.00004*k;const u=g.userData;if(u.stars){u.stars.material.opacity=k;u.stars.position.copy(cam1.position)}if(u.moon)u.moon.position.set(cam1.position.x-700,cam1.position.y+520,cam1.position.z-900)}
@@ -588,7 +588,7 @@ function enterInterior(m){const a=pl.e;if(!a)return;if(fps.on)releaseFps();fps.o
 function launch(type){const m=INT.m;if(!m||m.dead)return;const c=costOf(type),r=S.res;if(r.m<c[0]||r.f<c[1]||r.e<c[2]){toast('Recursos insuficientes');return}r.m-=c[0];r.f-=c[1];r.e-=c[2];const a=m.yaw+Math.PI;const u=mkEnt(type,0,clamp(m.x+Math.sin(a)*(m.r+25),-W,W),clamp(m.z+Math.cos(a)*(m.r+25),-W,W),{layer:m.layer,y:m.y,yaw:m.yaw+Math.PI});INT.on=false;enterFps(u);toast('🚀 Lançado: '+DEF[type].n)}
 function teleportHome(){const a=pl.e;if(!a)return;const hq=ents.find(e=>e.team===0&&e.type==='hq'&&!e.dead);const p=findLand(hq?hq.x+14:0,hq?hq.z+14:0);INT.on=false;a.inside=null;setEntLayer(a,'g');a.x=p.x;a.z=p.z;a.y=Math.max(0,hgt(p.x,p.z));a.vy=0;enterFps(a);toast('Teletransportado para a base')}
 function intCmd(prod){const m=INT.m;exitFps();if(prod&&m)setSel([m])}
-function interact(){if(!fps.on||!fps.e)return;if(INT.on){const s=nearSpot();if(s)s.fn();return}
+function interact(){if(!fps.on||!fps.e)return;doorSnd();if(INT.on){const s=nearSpot();if(s)s.fn();return}
  const v=fps.e,a=pl.e;if(v===a){const t=nearBoard(a);if(t)enterFps(t);else toast('Nada por perto para entrar');return}
  if(v.type==='mother'){enterInterior(v);return}const m=nearMother(v);if(m){enterInterior(m);return}leaveVehicle(v)}
 function promptText(){if(!fps.on||!fps.e)return '';if(INT.on){const s=nearSpot();return s?'E: '+s.t:''}const v=fps.e,a=pl.e;if(v===a){const t=nearBoard(a);return t?'E: Entrar — '+t.def.n:''}if(v.type==='mother')return 'E: Entrar na Nave-Mãe (interior)';if(nearMother(v))return 'E: Atracar na Nave-Mãe (interior)';return canLeave(v)?'E: Sair do veículo':'Pouse no solo ou atraque numa Nave-Mãe para sair'}
@@ -596,6 +596,42 @@ function respawnAvatar(){const hq=ents.find(e=>e.team===0&&e.def.drop&&e.layer==
 function ejectFrom(e){const wasInt=INT.on&&INT.m===e,wasFps=fps.on&&(fps.e===e||wasInt);INT.on=false;if(wasFps)releaseFps();const a=pl.e;if(!a||a===e){if(wasFps)pl.auto=true;return}
  a.inside=null;if(e.layer==='s'||(e.fly&&e.y>Math.max(0,hgt(e.x,e.z))+8)){kill(a);if(wasFps)pl.auto=true;return}
  const p=findLand(e.x,e.z,e.r+3);a.x=p.x;a.z=p.z;a.y=Math.max(0,hgt(p.x,p.z));a.vy=0;a.mesh.visible=true;if(wasFps)enterFps(a)}
+
+/* ============== ÁUDIO (sintetizado, sem arquivos) ============== */
+let master=null,noiseBuf=null,A_=null,stepT=0;
+function initAudio(){if(!actx||master)return;master=actx.createGain();master.gain.value=.85;master.connect(actx.destination);
+ const n=actx.sampleRate*2,b=actx.createBuffer(1,n,actx.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;noiseBuf=b;
+ const mk=(t,f,q)=>{const s=actx.createBufferSource();s.buffer=noiseBuf;s.loop=true;const fl=actx.createBiquadFilter();fl.type=t;fl.frequency.value=f;fl.Q.value=q;const g=actx.createGain();g.gain.value=0;s.connect(fl);fl.connect(g);g.connect(master);s.start();return{g,fl}};
+ const wind=mk('bandpass',450,.6),sea=mk('lowpass',420,.4);const lfo=actx.createOscillator(),lg=actx.createGain();lfo.frequency.value=.13;lg.gain.value=160;lfo.connect(lg);lg.connect(sea.fl.frequency);lfo.start();
+ const eg=actx.createGain();eg.gain.value=0;const ef=actx.createBiquadFilter();ef.type='lowpass';ef.frequency.value=380;const o1=actx.createOscillator(),o2=actx.createOscillator();o1.type='sawtooth';o2.type='square';o1.connect(ef);o2.connect(ef);ef.connect(eg);eg.connect(master);o1.start();o2.start();
+ const mg=actx.createGain();mg.gain.value=0;const mf=actx.createBiquadFilter();mf.type='lowpass';mf.frequency.value=900;mf.connect(mg);mg.connect(master);const mo=[0,1,2].map(()=>{const o=actx.createOscillator();o.type='triangle';o.connect(mf);o.start();return o});
+ const CH=[[110,165,220],[98,147,196],[87.3,131,175],[116.5,174.6,233]];let ci=0;const setCh=()=>{const c=CH[ci++%CH.length];mo.forEach((o,i)=>o.frequency.setTargetAtTime(c[i],actx.currentTime,2.5))};setCh();setInterval(setCh,9000);
+ A_={wind,sea,eg,o1,o2,ef,mg,lx:0,lz:0,ly:0,spd:0}}
+const T=(p,v,t=.12)=>{if(p&&actx)p.setTargetAtTime(v,actx.currentTime,t)};
+function burst(dur,freq,q,vol,type='lowpass',sweepTo){if(!actx||!master||S.mute)return;const t=actx.currentTime,s=actx.createBufferSource();s.buffer=noiseBuf;const f=actx.createBiquadFilter();f.type=type;f.frequency.setValueAtTime(freq,t);if(sweepTo)f.frequency.exponentialRampToValueAtTime(sweepTo,t+dur);f.Q.value=q;const g=actx.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,Math.random()*1.5);s.stop(t+dur+.05)}
+function tone(f0,f1,dur,vol,type='sine'){if(!actx||!master||S.mute)return;const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.05)}
+function dvol(x,y,z,range){const c=cam1.position,d=Math.hypot(x-c.x,y-c.y,z-c.z);return clamp(1-d/range,0,1)}
+function shotSnd(e){if(!actx||S.mute)return;const v=dvol(e.x,e.y,e.z,300)*((e===fps.e||e.p2)?1:.7);if(v<.03)return;const sp=e.layer==='s'||e.def.fly;
+ if(sp){tone(1100,220,.13,.07*v,'sawtooth');burst(.05,3000,1,.03*v,'highpass')}
+ else if(e.dmg>=28){burst(.28,500,1,.22*v,'lowpass',90);tone(110,45,.25,.16*v)}
+ else{burst(.09,2200,2,.1*v,'bandpass',900);tone(260,90,.07,.05*v,'square')}}
+function boomSnd(x,y,z,r){if(!actx||S.mute)return;const v=dvol(x,y,z,200+r*12);if(v<.02)return;const d=.25+Math.min(1.2,r*.04);burst(d,1400,.7,Math.min(.45,.12+r*.01)*v,'lowpass',70);tone(90,35,d,Math.min(.3,.08+r*.006)*v)}
+function hurtSnd(){if(S.t-((A_&&A_.lh)||0)<.15)return;if(A_)A_.lh=S.t;burst(.12,900,1.5,.12,'bandpass',300);tone(180,60,.12,.06,'square')}
+function doorSnd(){burst(.25,700,2,.14,'bandpass',200);tone(140,70,.2,.08,'triangle')}
+function whoosh(){burst(1.4,300,.8,.28,'bandpass',2600)}
+function blip(){tone(880,1250,.05,.04,'sine')}
+function audioTick(dt,idle){if(!A_||!actx)return;if(actx.state==='suspended')actx.resume();const on=!S.mute&&S.started&&!idle;master.gain.value=S.mute?0:.85;
+ const e=fps.on?fps.e:null,c=cam1.position;let spd=0;if(e){spd=Math.hypot(e.x-A_.lx,e.z-A_.lz,e.y-A_.ly)/Math.max(dt,.001);A_.lx=e.x;A_.lz=e.z;A_.ly=e.y;A_.spd+=(spd-A_.spd)*Math.min(1,dt*6);spd=A_.spd}
+ if(INT.on){spd=Math.hypot(fps.inp.fwd,fps.inp.str)*6}
+ const veh=e&&!e.pl&&!INT.on,alt=c.y,inSp=S.layer==='s'&&!INT.on,water=!INT.on&&S.layer==='g'&&hgt(c.x,c.z)<.8&&alt<60;
+ T(A_.wind.g.gain,on&&!INT.on&&!inSp?(.03+.1*clamp(alt/300,0,1)+(veh?clamp(spd/200,0,.06):0)):0);
+ T(A_.sea.g.gain,on&&water?.07:0,.4);
+ if(veh){const d=e.def,base={tank:46,apc:72,titan:30,boat:58,destroyer:40,fighter:95,frigate:55,mother:30,engineer:80,smine:70}[d.id]||60,vmax=(e.fly?fspeed(e)*2.2:d.sp*1.7)||20;const k=clamp(spd/vmax,0,1);
+  A_.o1.frequency.setTargetAtTime(base*(1+k*.9),actx.currentTime,.1);A_.o2.frequency.setTargetAtTime(base*.5*(1+k*.9),actx.currentTime,.1);A_.ef.frequency.setTargetAtTime(220+k*500,actx.currentTime,.1);T(A_.eg.gain,on?(.045+.07*k):0)}
+ else if(INT.on){A_.o1.frequency.setTargetAtTime(48,actx.currentTime,.3);A_.o2.frequency.setTargetAtTime(24,actx.currentTime,.3);A_.ef.frequency.setTargetAtTime(160,actx.currentTime,.3);T(A_.eg.gain,on?.05:0)}
+ else T(A_.eg.gain,0);
+ T(A_.mg.gain,on?(inSp||INT.on?.07:.035):0,.8);
+ if(on&&e&&(e.pl||INT.on)&&spd>1.2&&(INT.on||e.y<=Math.max(0,hgt(e.x,e.z))+.3)){const run=fps.inp.boost;stepT-=dt;if(stepT<=0){stepT=run?.26:.38;if(INT.on)burst(.07,1100,3,.1,'bandpass',500);else burst(.08,hgt(e.x,e.z)<.8?500:700,1.2,.08,'lowpass',200)}}}
 
 /* ============== SIMULAÇÃO ============== */
 function setLayer(l){S.layer=l;$('lg').classList.toggle('on',l==='g');$('ls').classList.toggle('on',l==='s');if(BLD.on){cancelBuild()}panelSig='';if(fps.on&&fps.e&&fps.e.layer!==l)exitFps()}
@@ -734,7 +770,8 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==
  else if(e.code==='Digit1')setLayer('g');else if(e.code==='Digit2')setLayer('s');else if(e.code==='KeyP'&&e.shiftKey)togglePause()});
 addEventListener('keyup',e=>{keys[e.code]=false});
 function selAll(mil){setSel(ents.filter(e=>e.team===0&&!e.dead&&e.def.k==='u'&&e.layer===S.layer&&!e.p2&&(!mil||e.def.role==='mil')));toast('Selecionadas: '+S.sel.length)}
-function ensureAudio(){if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}else if(actx.state==='suspended')actx.resume()}
+function ensureAudio(){if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();initAudio()}catch(e){}}else if(actx.state==='suspended')actx.resume()}
+document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('button'))blip()});
 // joystick
 (function(){const j=$('joy'),k=$('knob');let id=null;const set=(x,y)=>{const r=j.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=(x-cx)/50,dy=(y-cy)/50;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}fps.joy.x=dx;fps.joy.y=dy;k.style.left=(40+dx*40)+'px';k.style.top=(40+dy*40)+'px'};
  j.addEventListener('pointerdown',e=>{id=e.pointerId;j.setPointerCapture(id);set(e.clientX,e.clientY);e.stopPropagation()});j.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e.clientX,e.clientY)});
@@ -747,6 +784,7 @@ $('bFps').onclick=()=>fps.on?exitFps():enterFps();$('bClear').onclick=()=>setSel
 $('bCoop').onclick=()=>{S.coop=!S.coop;document.body.classList.toggle('coop',S.coop);if(S.coop){spawnP2();toast('🎮 Jogador 2: setas + Enter (ou controle). Herói dourado no solo.')}else if(p2.e){kill(p2.e);p2.e=null}resize();uiRefresh()};
 function togglePause(){S.paused=!S.paused;$('help').style.display=S.paused?'flex':'none';$('helpD').innerHTML=$('start').querySelector('ul').outerHTML}
 $('bPause').onclick=togglePause;
+$('bMute').onclick=()=>{S.mute=!S.mute;$('bMute').textContent=S.mute?'🔇':'🔊';$('hpMute').textContent=S.mute?'🔇 Mudo':'🔊 Som'};
 const DESC={soldier:'Soldado: infantaria básica que defende a base e ataca inimigos. Barato e rápido de produzir; gasta 1 de população.',miner:'Minerador: coleta 🔩 metal dos cristais (superfície) e leva até o QG/posto. Metal paga quase tudo. Mande para um cristal tocando nele.',builder:'Construtor: ergue e repara construções. Sem ele não dá para construir. Toque numa obra ou prédio danificado com ele selecionado.',farmer:'Agricultor: trabalha numa Fazenda e gera 🌾 comida (até 4 por fazenda). Comida é usada para criar unidades.',tank:'Tanque: blindado pesado com tiro em área. Forte contra grupos e construções, lento para virar. Produzido no Quartel/Fábrica.',apc:'Blindado Hover: rápido e resistente, tiro rápido de baixo dano. Ótimo para flanquear e perseguir.',titan:'Titã Walker: robô colossal. Muita vida e canhões de tiro em área de longo alcance. Caro e usa 5 de população.',hero:'Comandante: seu personagem em 1ª pessoa. Anda, pula (espaço), atira e entra em veículos com E. No co-op, é o herói do jogador 2.',boat:'Lancha de Patrulha: barco rápido de combate para os mares. Só navega na água. Produzida no Estaleiro Naval.',destroyer:'Destróier: navio de guerra com canhões de longo alcance e tiro em área. Domina os mares.',shipyard:'Estaleiro Naval: constrói lanchas e destróieres. Construa perto do mar, pois os barcos nascem na água mais próxima.',engineer:'Nave Engenheira: constrói e repara na órbita (estruturas orbitais só saem com ela).',smine:'Nave Mineradora: coleta 🔩 metal dos asteroides laranja e entrega na estação/nave-mãe.',fighter:'Caça: nave pequena e muito rápida, bom contra drones e para defender estações. Frota barata.',frigate:'Fragata: nave de guerra média, tiro em área. Habilita o ☄️ Ataque Orbital (junto com Nave-Mãe e Estaleiro).',mother:'Nave-Mãe: nave colossal com INTERIOR visitável (E ao atracar): hangar, ponte de comando, engenharia e teletransporte. Fabrica caças/engenheiras, libera o Drop Pod e recebe metal.',hq:'Quartel-General: seu coração em terra. Cria mineradores, construtores, agricultores e soldados, recebe o metal coletado e dá +10 de população. Se perder todas as bases/estações/naves-mãe, você perde.',outpost:'Posto Avançado: mini-base para expandir. Recebe recursos dos mineradores, cria unidades básicas e dá +5 de população.',farm:'Fazenda Hidropônica: produz 🌾 comida. Rende muito mais com agricultores trabalhando nela.',solar:'Painel Solar: gera ⚡ energia continuamente. Energia é exigida por tanques, naves, torres e ataque orbital.',mine:'Perfuratriz Automática: gera 🔩 metal sozinha, sem precisar de minerador.',turret:'Torre de Defesa: atira automaticamente em inimigos que chegarem perto. Coloque na borda da base.',wall:'Muralha: bloqueia a passagem; inimigos precisam destruí-la. Barata e resistente.',barracks:'Quartel/Fábrica: produz soldados, tanques, blindados hover e Titãs.',city:'Distrito Urbano: moradias. Aumenta o limite de população (+12), permitindo ter mais unidades. Em escala Colossal vira uma cidade enorme.',launchpad:'Plataforma de Lançamento: manda engenheiras, mineradoras e caças da superfície para a órbita. Primeiro passo para ter frota.',station:'Estação Orbital: sua base no espaço. Recebe metal dos mineradores orbitais e cria engenheiras, mineradoras e caças (+8 de população).',dock:'Estaleiro Orbital: fabrica TODAS as naves, inclusive fragata e Nave-Mãe. Também habilita o ☄️ Ataque Orbital.',oturret:'Torre Orbital: canhão automático que defende suas estações no espaço.',sarray:'Painel Solar Orbital: gera ⚡ energia no espaço, mais que o terrestre.',habitat:'Anel Habitacional: moradias orbitais. Aumenta o limite de população (+16).',hydro:'Estufa Orbital: produz 🌾 comida no espaço sem precisar de agricultores.',grunt:'Alienígena: infantaria inimiga. Ataca em grupo.',crawler:'Alienígena: besta blindada inimiga com tiro em área.',behemoth:'Alienígena chefe terrestre: enorme e perigoso. Concentre fogo.',drone:'Alienígena: nave rápida e fraca, aparece em enxames.',cruiser:'Alienígena: nave de guerra inimiga com tiro em área.',leviathan:'Alienígena chefe orbital: nave colossal. Leve a Nave-Mãe e frota grande.',hive:'Colmeia alienígena: ninho inimigo na superfície. Gera tropas sem parar. Destruí-la conta para o objetivo 🎯.',spire:'Espinho alienígena: torre de defesa inimiga.',nest:'Ninho orbital alienígena: gera naves inimigas. Destruí-lo conta para o objetivo 🎯.',sspire:'Espinho orbital alienígena: torre de defesa inimiga no espaço.'};
 const BTNINFO={bBuild:'🏗 Construir: abre o menu de construções da camada atual. Escolha o prédio, a escala (Colossal = mais vida/produção e mais custo) e toque no mapa. Precisa de construtor.',bEdit:'✏️ Editor: abre o editor 3D para mudar peças, cores e formas da unidade/nave/base selecionada. Vale para todas desse tipo; peças maiores = mais vida e mais custo.',bFps:'👁 1ª pessoa / 🎥 Comando: alterna entre andar e pilotar pelo mundo (1ª pessoa) e a visão de cima, usada só para construir e mandar unidades.',bClear:'✖ Limpar: cancela a seleção atual.',bAll:'🟦 Todas: seleciona todas as unidades móveis da camada atual para dar uma ordem em grupo.',bMil:'⚔️ Militares: seleciona só soldados, tanques, naves de combate etc., sem trabalhadores.',bStrike:'☄️ Ataque Orbital: bombardeio da órbita na superfície (dano enorme em área). Custa 120 ⚡, recarga 30 s, e exige Fragata, Nave-Mãe ou Estaleiro. Toque no alvo na superfície.',bDrop:'📦 Drop Pod: a Nave-Mãe lança 4 soldados no ponto escolhido da superfície. Custa 60 🔩 e 20 🌾 e precisa de espaço de população.',bCoop:'🎮 Co-op local: divide a tela. O jogador 2 controla um herói dourado no solo com setas + Enter ou um controle.',bPause:'⏸ Pausa: pausa o jogo e mostra a ajuda; tem opção de novo mundo e som.',bBig:'🔍 Botões maiores: aumenta botões e textos para telas pequenas.',bFull:'⛶ Tela cheia: esconde as barras do navegador.',lg:'🌍 Superfície: mostra a frente terrestre. As duas frentes continuam rodando ao mesmo tempo.',ls:'🛰 Órbita: mostra o espaço, onde ficam naves, estações e asteroides.',rM:'🔩 Metal: recurso principal; paga unidades e construções. Venha de mineradores e perfuratrizes.',rF:'🌾 Comida: necessária para criar unidades. Vem de fazendas e estufas.',rE:'⚡ Energia: exigida por unidades pesadas, torres e ataque orbital. Vem de painéis solares.',rP:'👥 População: unidades usadas/limite. Para aumentar, construa Distritos Urbanos ou Anéis Habitacionais.',rW:'⏱ Próxima onda de invasão alienígena. Prepare defesas antes do contador chegar a zero.',rO:'🎯 Objetivo: ninhos alienígenas restantes / total. Descubra-os explorando e destrua-os.'};
 let infoT=0;function info(t){const i=$('info');i.textContent=t;i.style.display='block';clearTimeout(infoT);infoT=setTimeout(()=>i.style.display='none',6500)}
@@ -754,7 +792,7 @@ for(const id in BTNINFO){const el=$(id);if(el)el.addEventListener('click',()=>in
 function setBig(v){document.body.classList.toggle('big',v);$('bBig').classList.toggle('on',v);try{localStorage.setItem('imperio_big',v?'1':'')}catch(e){}}
 $('bBig').onclick=()=>setBig(!document.body.classList.contains('big'));
 try{setBig(localStorage.getItem('imperio_big')==='1'||(TOUCH&&innerHeight<500&&localStorage.getItem('imperio_big')===null))}catch(e){setBig(TOUCH)}
-$('bFull').onclick=()=>{const d=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(d.requestFullscreen)d.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>toast('Tela cheia indisponível aqui. Use "Adicionar à tela inicial" no navegador.'));else toast('Use "Adicionar à tela inicial" no navegador.')}catch(e){}};$('hpClose').onclick=()=>{S.paused=false;$('help').style.display='none'};$('hpNew').onclick=()=>{$('help').style.display='none';newWorld();S.paused=false};$('hpMute').onclick=()=>{S.mute=!S.mute;$('hpMute').textContent=S.mute?'🔇 Mudo':'🔊 Som'};
+$('bFull').onclick=()=>{const d=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(d.requestFullscreen)d.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>toast('Tela cheia indisponível aqui. Use "Adicionar à tela inicial" no navegador.'));else toast('Use "Adicionar à tela inicial" no navegador.')}catch(e){}};$('hpClose').onclick=()=>{S.paused=false;$('help').style.display='none'};$('hpNew').onclick=()=>{$('help').style.display='none';newWorld();S.paused=false};$('hpMute').onclick=()=>{S.mute=!S.mute;$('bMute').textContent=S.mute?'🔇':'🔊';$('hpMute').textContent=S.mute?'🔇 Mudo':'🔊 Som'};
 $('ovB').onclick=()=>{$('over').style.display='none';newWorld();S.paused=false};
 $('goBtn').onclick=()=>{$('start').style.display='none';ensureAudio();try{if(TOUCH&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(e){}S.paused=false;S.started=true;resize()};
 mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect(),q=cam[S.layer];q.x=((e.clientX-r.left)/r.width*2-1)*W;q.z=((e.clientY-r.top)/r.height*2-1)*W;e.stopPropagation()});
@@ -765,7 +803,7 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);v
 addEventListener('resize',resize);
 let last=performance.now();
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;
- if(ED.open){renderEditor();return}
+ if(ED.open){audioTick(dt,true);renderEditor();return}
  const run=!S.paused&&S.started&&!S.over;
  if(run){sim(dt);accUI-=dt;if(accUI<=0){accUI=.25;hudTick()}}
 
@@ -775,7 +813,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
  else if(fps.e)fpsCam(cam1,fps.e,fps.inp,fps.third);
  if(S.coop){if(p2.e&&!p2.e.dead)fpsCam(cam2,p2.e,p2.inp,true);else{cam2.position.set(0,60,60);cam2.lookAt(0,0,0)}}
  if(!INT.on){if(S.layer==='g')atmos();else followSky()}
- const pt=promptText();if(pt!==lastPt){lastPt=pt;const pe=$('prompt');pe.textContent=pt;pe.style.display=pt?'block':'none'}
+ audioTick(dt);const pt=promptText();if(pt!==lastPt){lastPt=pt;const pe=$('prompt');pe.textContent=pt;pe.style.display=pt?'block':'none'}
  const sc=INT.on?INT.scene:scenes[S.layer];const w=innerWidth,h=innerHeight;
  if(S.coop){renderer.setScissorTest(true);renderer.setViewport(0,0,w/2,h);renderer.setScissor(0,0,w/2,h);renderer.render(sc,cam1);renderer.setViewport(w/2,0,w/2,h);renderer.setScissor(w/2,0,w/2,h);renderer.render(scenes.g,cam2);renderer.setScissorTest(false)}
  else{renderer.setViewport(0,0,w,h);renderer.render(sc,cam1)}
