@@ -59,6 +59,7 @@ input[type=color]{width:38px;height:30px;border:none;background:none;padding:0}
 .edrow{display:grid;grid-template-columns:44px 1fr 62px;gap:5px;align-items:center;margin:2px 0}
 .chips{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0}
 .chips .btn{min-height:26px;padding:2px 6px;font-size:11px}
+body.big .btn{font-size:15px;min-height:46px;padding:8px 12px}body.big #side{grid-template-columns:repeat(2,56px)}body.big #side .btn{width:56px;height:52px;font-size:26px}body.big .chip{font-size:15px;padding:6px 10px}body.big #panel,body.big #buildp{left:150px;right:136px}body.big #mini{width:140px;height:140px}body.big #firebtn{width:100px;height:100px}
 body.coop #ui{right:50%}
 body.coop #hud2d{right:50%;width:50%}
 </style>
@@ -82,6 +83,8 @@ body.coop #hud2d{right:50%;width:50%}
     <button class="btn" id="bDrop" title="Drop pod (P)">📦</button>
     <button class="btn" id="bCoop" title="Co-op local (2 jogadores)">🎮</button>
     <button class="btn" id="bPause" title="Pausa / ajuda">⏸</button>
+    <button class="btn" id="bBig" title="Botões maiores">🔍</button>
+    <button class="btn" id="bFull" title="Tela cheia">⛶</button>
   </div>
   <canvas id="mini" width="256" height="256"></canvas>
   <div id="panel"></div>
@@ -637,7 +640,11 @@ $('lg').onclick=()=>setLayer('g');$('ls').onclick=()=>setLayer('s');$('bBuild').
 $('bFps').onclick=()=>fps.on?exitFps():enterFps();$('bClear').onclick=()=>setSel([]);$('bAll').onclick=()=>selAll(false);$('bMil').onclick=()=>selAll(true);$('bStrike').onclick=()=>startTarget('strike');$('bDrop').onclick=()=>startTarget('drop');
 $('bCoop').onclick=()=>{S.coop=!S.coop;document.body.classList.toggle('coop',S.coop);if(S.coop){spawnP2();toast('🎮 Jogador 2: setas + Enter (ou controle). Herói dourado no solo.')}else if(p2.e){kill(p2.e);p2.e=null}resize();uiRefresh()};
 function togglePause(){S.paused=!S.paused;$('help').style.display=S.paused?'flex':'none';$('helpD').innerHTML=$('start').querySelector('ul').outerHTML}
-$('bPause').onclick=togglePause;$('hpClose').onclick=()=>{S.paused=false;$('help').style.display='none'};$('hpNew').onclick=()=>{$('help').style.display='none';newWorld();S.paused=false};$('hpMute').onclick=()=>{S.mute=!S.mute;$('hpMute').textContent=S.mute?'🔇 Mudo':'🔊 Som'};
+$('bPause').onclick=togglePause;
+function setBig(v){document.body.classList.toggle('big',v);$('bBig').classList.toggle('on',v);try{localStorage.setItem('imperio_big',v?'1':'')}catch(e){}}
+$('bBig').onclick=()=>setBig(!document.body.classList.contains('big'));
+try{setBig(localStorage.getItem('imperio_big')==='1'||(TOUCH&&innerHeight<500&&localStorage.getItem('imperio_big')===null))}catch(e){setBig(TOUCH)}
+$('bFull').onclick=()=>{const d=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(d.requestFullscreen)d.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>toast('Tela cheia indisponível aqui. Use "Adicionar à tela inicial" no navegador.'));else toast('Use "Adicionar à tela inicial" no navegador.')}catch(e){}};$('hpClose').onclick=()=>{S.paused=false;$('help').style.display='none'};$('hpNew').onclick=()=>{$('help').style.display='none';newWorld();S.paused=false};$('hpMute').onclick=()=>{S.mute=!S.mute;$('hpMute').textContent=S.mute?'🔇 Mudo':'🔊 Som'};
 $('ovB').onclick=()=>{$('over').style.display='none';newWorld();S.paused=false};
 $('goBtn').onclick=()=>{$('start').style.display='none';ensureAudio();try{if(TOUCH&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(e){}S.paused=false;S.started=true;resize()};
 mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect(),q=cam[S.layer];q.x=((e.clientX-r.left)/r.width*2-1)*W;q.z=((e.clientY-r.top)/r.height*2-1)*W;e.stopPropagation()});
