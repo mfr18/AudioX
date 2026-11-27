@@ -54,9 +54,9 @@ body.fps #mini{top:44px;bottom:auto;width:104px;height:104px}
 #over,#help{display:none}
 #rot{position:fixed;inset:0;background:#000;z-index:99;display:none;align-items:center;justify-content:center;font-size:20px;text-align:center;padding:30px}
 @media (orientation:portrait){#rot{display:flex}}
-#editor{position:fixed;right:0;top:0;bottom:0;width:50%;min-width:330px;background:#0b1623ee;border-left:1px solid #2fd0ff88;display:none;flex-direction:column;z-index:20;pointer-events:auto}
-#editor .hd{padding:6px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #2fd0ff33}
-#editor .bd{padding:6px;overflow:auto;flex:1}
+#editor,#ws{position:fixed;right:0;top:0;bottom:0;width:50%;min-width:330px;background:#0b1623ee;border-left:1px solid #2fd0ff88;display:none;flex-direction:column;z-index:20;pointer-events:auto}
+#editor .hd,#ws .hd{padding:6px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #2fd0ff33}
+#editor .bd,#ws .bd{padding:6px;overflow:auto;flex:1}
 select,input[type=number]{background:#102235;color:#dff;border:1px solid #2fd0ff66;border-radius:6px;padding:4px;font:12px system-ui}
 input[type=color]{width:38px;height:30px;border:none;background:none;padding:0}
 .edrow{display:grid;grid-template-columns:44px 1fr 62px;gap:5px;align-items:center;margin:2px 0}
@@ -64,6 +64,8 @@ input[type=color]{width:38px;height:30px;border:none;background:none;padding:0}
 .chips .btn{min-height:26px;padding:2px 6px;font-size:11px}
 body.big .btn{font-size:15px;min-height:46px;padding:8px 12px}body.big #side{grid-template-columns:repeat(2,56px)}body.big #side .btn{width:56px;height:52px;font-size:26px}body.big .chip{font-size:15px;padding:6px 10px}body.big #panel,body.big #buildp{left:150px;right:136px}body.big #mini{width:140px;height:140px}body.big #firebtn{width:100px;height:100px}
 #info{position:absolute;left:50%;top:44px;transform:translateX(-50%);max-width:min(520px,70vw);background:#06121cf2;border:1px solid #8ef;border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.35;display:none;pointer-events:none;z-index:5}
+#ws{display:none}
+#ws input[type=text]{background:#102235;color:#dff;border:1px solid #2fd0ff66;border-radius:6px;padding:4px;width:120px;font:12px system-ui}
 body.coop #ui{right:50%}
 body.coop #hud2d{right:50%;width:50%}
 </style>
@@ -86,6 +88,7 @@ body.coop #hud2d{right:50%;width:50%}
     <button class="btn" id="bStrike" title="Ataque orbital (O)">☄️</button>
     <button class="btn" id="bDrop" title="Drop pod (P)">📦</button>
     <button class="btn" id="bCoop" title="Co-op local (2 jogadores)">🎮</button>
+    <button class="btn" id="bWs" title="Estaleiro de Criação">🛠</button>
     <button class="btn" id="bPause" title="Pausa / ajuda">⏸</button>
     <button class="btn" id="bBig" title="Botões maiores">🔍</button>
     <button class="btn" id="bFull" title="Tela cheia">⛶</button>
@@ -117,6 +120,7 @@ body.coop #hud2d{right:50%;width:50%}
     <div style="opacity:.7;margin-top:6px">Arraste no 3D para girar · roda do mouse / pinça para zoom. Peças maiores = mais vida e mais custo. As mudanças valem para todas as unidades desse tipo.</div>
   </div>
 </div>
+<div id="ws"><div class="hd"><b>🛠 Estaleiro</b><input id="wsName" type="text"><select id="wsList"></select><button class="btn" id="wsNew">Novo</button><button class="btn" id="wsClose">✔ Fechar</button></div><div class="hd" id="wsTabs"></div><div class="bd" id="wsBody"></div><div class="hd" style="border-top:1px solid #2fd0ff33;border-bottom:none"><button class="btn" id="wsSave">💾 Salvar</button><button class="btn" id="wsMake">🏭 Fabricar e testar</button><button class="btn" id="wsDel">🗑</button><span id="wsInfo" style="font-weight:700;color:#8ef"></span></div></div>
 <div id="start"><div class="box">
   <h1>⚔ IMPÉRIO ESTELAR</h1>
   <div>RTS 3D sandbox de mundo aberto — superfície e órbita ao mesmo tempo. Cresça seu império, construa cidades colossais, projete suas próprias naves e tanques e sobreviva às invasões alienígenas.</div>
@@ -303,7 +307,7 @@ function stars(n,R,sz){const g=new THREE.BufferGeometry(),a=new Float32Array(n*3
 })();
 const matC={};
 function mat(c,e){const k=c+(e?'e':'');if(!matC[k]){const col=new THREE.Color(c);matC[k]=new THREE.MeshStandardMaterial({color:col,roughness:.55,metalness:.55,flatShading:true,emissive:e?col:0x000000,emissiveIntensity:e?1.1:0})}return matC[k]}
-function partMesh(p,tc){const m=new THREE.Mesh(GEO[p.s]||GEO.box,mat(p.c==='t'?tc:p.c,p.e));m.position.set(p.p[0],p.p[1],p.p[2]);m.scale.set(p.z[0],p.z[1],p.z[2]);const r=p.r||[0,0,0];m.rotation.set(r[0]*Math.PI/180,r[1]*Math.PI/180,r[2]*Math.PI/180);return m}
+function partMesh(p,tc){const m=new THREE.Mesh(geoFor(p),mat(p.c==='t'?tc:p.c,p.e));m.position.set(p.p[0],p.p[1],p.p[2]);m.scale.set(p.z[0],p.z[1],p.z[2]);const r=p.r||[0,0,0];m.rotation.set(r[0]*Math.PI/180,r[1]*Math.PI/180,r[2]*Math.PI/180);return m}
 function modelFor(parts,tc){const g=new THREE.Group();parts.forEach(p=>g.add(partMesh(p,tc)));return g}
 
 /* ================= ESTADO ================= */
@@ -325,7 +329,7 @@ function mkEnt(type,team,x,z,o={}){
  const d=DEF[type],k=o.k||1,e={id:nid++,type,def:d,team,layer:o.layer||d.L,fly:!!d.fly,k,x,z,y:0,yaw:o.yaw!=null?o.yaw:rnd(0,6.28),order:null,tgt:null,cd:rnd(0,.5),scan:rnd(0,.4),carry:0,q:[],build:o.site?.02:1,work:0,dead:false,seen:team===0,home:o.home||null,raid:!!o.raid,spT:rnd(10,25),hit:0,tc:o.tc||(team===0?TC[0]:TC[1])};
  const s=sm(e);e.sm=s;e.r=d.r*(team===0?rMul(type):1)*k;
  e.maxhp=d.hp*s*(d.k==='b'?Math.pow(k,1.5):1);e.hp=o.site?e.maxhp*.02:e.maxhp;
- e.dmg=d.dmg*s*(d.k==='b'?Math.sqrt(k):1);e.rng=d.rng*(d.k==='b'?Math.pow(k,.3):1);
+ e.dmg=d.dmg*s*(d.k==='b'?Math.sqrt(k):1);e.rng=d.rng*(d.k==='b'?Math.pow(k,.3):1);if(d.custom){e.an=d.an;e.en=d.an.bat;e.fu=d.an.fuel;e.vx=e.vy=e.vz=0}
  e.mesh=modelFor(team===0?DESIGN[type]:d.parts,e.tc);e.mesh.scale.setScalar(k);scenes[e.layer].add(e.mesh);
  groundY(e,99);if(o.y!=null)e.y=o.y;if(o.site)e.mesh.scale.set(k,k*.15,k);
  syncMesh(e);ents.push(e);return e}
@@ -519,7 +523,7 @@ function enterFps(t){
  $('fpsui').style.display='block';document.body.classList.add('fps');$('panel').style.display='none';cancelBuild();S.tgtMode=null;
  if(S.layer!==t.layer)setLayer(t.layer);lockPtr()}
 function exitFps(){if(!fps.on)return;const e=fps.e;if(e){const q=cam[e.layer];q.x=clamp(e.x,-W,W);q.z=clamp(e.z,-W,W)}INT.on=false;releaseFps();S.sel.forEach(u=>{if(u.order&&u.order.t==='follow')u.order=null});$('fpsui').style.display='none';document.body.classList.remove('fps');try{document.exitPointerLock()}catch(x){}panelSig=''}
-function drive(e,inp,dt){const d=e.def;e.yaw+=inp.dyaw+(inp.turn||0)*dt;inp.dyaw=0;inp.pitch=clamp(inp.pitch+inp.dpitch,-1.4,1.4);inp.dpitch=0;
+function drive(e,inp,dt){if(e.def.custom)return driveCustom(e,inp,dt);const d=e.def;e.yaw+=inp.dyaw+(inp.turn||0)*dt;inp.dyaw=0;inp.pitch=clamp(inp.pitch+inp.dpitch,-1.4,1.4);inp.dpitch=0;
  const s=Math.sin(e.yaw),c=Math.cos(e.yaw);let f=inp.fwd,r=inp.str;const l=Math.hypot(f,r);if(l>1){f/=l;r/=l}const up=inp.up||0;
  if(e.fly){const spd=fspeed(e)*(inp.boost?2.2:1),cp=Math.cos(inp.pitch),sp=Math.sin(inp.pitch);
   e.x=clamp(e.x+(s*cp*f-c*r)*spd*dt,-W,W);e.z=clamp(e.z+(c*cp*f+s*r)*spd*dt,-W,W);e.y+=(sp*f+up*.7)*spd*dt;
@@ -579,7 +583,7 @@ function intOK(x,z){for(const r of INT.rects)if(x>r[0]+.6&&x<r[2]-.6&&z>r[1]+.6&
 function driveInt(dt){const i=fps.inp;INT.yaw+=i.dyaw;i.dyaw=0;i.pitch=clamp(i.pitch+i.dpitch,-1.4,1.4);i.dpitch=0;const sp=(i.boost?11:6)*dt,s=Math.sin(INT.yaw),c=Math.cos(INT.yaw);let f=i.fwd,r=i.str;const l=Math.hypot(f,r);if(l>1){f/=l;r/=l}
  const nx=INT.x+(s*f-c*r)*sp,nz=INT.z+(c*f+s*r)*sp;if(intOK(nx,nz)){INT.x=nx;INT.z=nz}else if(intOK(nx,INT.z))INT.x=nx;else if(intOK(INT.x,nz))INT.z=nz}
 function nearSpot(){for(const p of INT.spots)if(Math.hypot(p.x-INT.x,p.z-INT.z)<3.6)return p;return null}
-function nearBoard(a){let b=null,bd=1e9;for(const t of A[a.layer][0]){if(t===a||t.dead||t.p2||t.pl||t.inside||t.def.k!=='u'||!t.def.sp)continue;const d=Math.hypot(t.x-a.x,t.z-a.z);if(d>t.r+7||Math.abs(t.y-a.y)>Math.max(10,t.r*1.2))continue;if(d<bd){bd=d;b=t}}return b}
+function nearBoard(a){let b=null,bd=1e9;for(const t of A[a.layer][0]){if(t===a||t.dead||t.p2||t.pl||t.inside||t.def.k!=='u'||(!t.def.sp&&!t.def.custom))continue;const d=Math.hypot(t.x-a.x,t.z-a.z);if(d>t.r+7||Math.abs(t.y-a.y)>Math.max(10,t.r*1.2))continue;if(d<bd){bd=d;b=t}}return b}
 function nearMother(v){for(const t of A[v.layer][0]){if(t.type!=='mother'||t.dead||t===v)continue;if(Math.hypot(t.x-v.x,t.z-v.z)<t.r+90&&Math.abs(t.y-v.y)<t.r+60)return t}return null}
 function canLeave(v){return !(v.fly&&(v.layer==='s'||v.y>Math.max(0,hgt(v.x,v.z))+6))}
 function leaveVehicle(v){if(!canLeave(v)){toast('Pouse em solo ou atraque numa Nave-Mãe para sair');return}const a=pl.e;if(!a)return;const p=findLand(v.x,v.z,v.r+3);a.inside=null;a.x=p.x;a.z=p.z;a.vy=0;a.y=Math.max(0,hgt(p.x,p.z));if(a.layer!=='g')setEntLayer(a,'g');if(v.fly)v.park=true;enterFps(a)}
@@ -589,9 +593,9 @@ function launch(type){const m=INT.m;if(!m||m.dead)return;const c=costOf(type),r=
 function teleportHome(){const a=pl.e;if(!a)return;const hq=ents.find(e=>e.team===0&&e.type==='hq'&&!e.dead);const p=findLand(hq?hq.x+14:0,hq?hq.z+14:0);INT.on=false;a.inside=null;setEntLayer(a,'g');a.x=p.x;a.z=p.z;a.y=Math.max(0,hgt(p.x,p.z));a.vy=0;enterFps(a);toast('Teletransportado para a base')}
 function intCmd(prod){const m=INT.m;exitFps();if(prod&&m)setSel([m])}
 function interact(){if(!fps.on||!fps.e)return;doorSnd();if(INT.on){const s=nearSpot();if(s)s.fn();return}
- const v=fps.e,a=pl.e;if(v===a){const t=nearBoard(a);if(t)enterFps(t);else toast('Nada por perto para entrar');return}
- if(v.type==='mother'){enterInterior(v);return}const m=nearMother(v);if(m){enterInterior(m);return}leaveVehicle(v)}
-function promptText(){if(!fps.on||!fps.e)return '';if(INT.on){const s=nearSpot();return s?'E: '+s.t:''}const v=fps.e,a=pl.e;if(v===a){const t=nearBoard(a);return t?'E: Entrar — '+t.def.n:''}if(v.type==='mother')return 'E: Entrar na Nave-Mãe (interior)';if(nearMother(v))return 'E: Atracar na Nave-Mãe (interior)';return canLeave(v)?'E: Sair do veículo':'Pouse no solo ou atraque numa Nave-Mãe para sair'}
+ const v=fps.e,a=pl.e;if(v===a){const t=nearBoard(a);if(t){if(t.def.custom&&t.def.hasInt)enterInterior(t);else enterFps(t)}else toast('Nada por perto para entrar');return}
+ if(v.type==='mother'||(v.def.custom&&v.def.hasInt)){enterInterior(v);return}const m=nearMother(v);if(m){enterInterior(m);return}leaveVehicle(v)}
+function promptText(){if(!fps.on||!fps.e)return '';if(INT.on){const s=nearSpot();return s?'E: '+s.t:''}const v=fps.e,a=pl.e;if(v===a){const t=nearBoard(a);return t?'E: Entrar — '+t.def.n:''}if(v.type==='mother'||(v.def.custom&&v.def.hasInt))return 'E: Ir ao interior';if(nearMother(v))return 'E: Atracar na Nave-Mãe (interior)';return canLeave(v)?'E: Sair do veículo':'Pouse no solo ou atraque numa Nave-Mãe para sair'}
 function respawnAvatar(){const hq=ents.find(e=>e.team===0&&e.def.drop&&e.layer==='g'&&e.build>=1);const p=findLand(hq?hq.x+12:0,hq?hq.z+12:0);const a=mkEnt('hero',0,p.x,p.z,{tc:'#ffffff'});a.pl=true;pl.e=a;if(pl.auto){pl.auto=false;enterFps(a)}toast('Você reapareceu na base')}
 function ejectFrom(e){const wasInt=INT.on&&INT.m===e,wasFps=fps.on&&(fps.e===e||wasInt);INT.on=false;if(wasFps)releaseFps();const a=pl.e;if(!a||a===e){if(wasFps)pl.auto=true;return}
  a.inside=null;if(e.layer==='s'||(e.fly&&e.y>Math.max(0,hgt(e.x,e.z))+8)){kill(a);if(wasFps)pl.auto=true;return}
@@ -633,6 +637,311 @@ function audioTick(dt,idle){if(!A_||!actx)return;if(actx.state==='suspended')act
  T(A_.mg.gain,on?(inSp||INT.on?.07:.035):0,.8);
  if(on&&e&&(e.pl||INT.on)&&spd>1.2&&(INT.on||e.y<=Math.max(0,hgt(e.x,e.z))+.3)){const run=fps.inp.boost;stepT-=dt;if(stepT<=0){stepT=run?.26:.38;if(INT.on)burst(.07,1100,3,.1,'bandpass',500);else burst(.08,hgt(e.x,e.z)<.8?500:700,1.2,.08,'lowpass',200)}}}
 
+/* ============== ESTALEIRO DE CRIAÇÃO: peças, módulos, física, genoma ============== */
+const SHAPES=[['box','Bloco'],['cyl','Cilindro'],['cone','Cone'],['sph','Esfera'],['oct','Cristal'],['wedge','Cunha'],['prism','Prisma'],['hex','Hexágono'],['pyr','Pirâmide'],['tor','Anel'],['cap','Cápsula'],['dome','Cúpula'],['rock','Rocha']];
+const SHF={box:1,cyl:.785,cone:.26,sph:.52,oct:.33,wedge:.5,prism:.43,hex:.65,pyr:.33,tor:.5,cap:.7,dome:.26,rock:.5};
+function RNG(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const GC={};
+function geoFor(p){const s=p.s,d0=(s==='cone'||s==='pyr')?0:1,tp=p.tp==null?d0:p.tp,nz=p.nz||0,sd=p.sd||0;
+ if(tp===d0&&!nz&&GEO[s])return GEO[s];const key=s+'|'+tp+'|'+nz+'|'+sd;if(GC[key])return GC[key];if(Object.keys(GC).length>500)for(const k in GC)delete GC[k];
+ let g;const sg=nz?6:1;
+ switch(s){
+  case 'box':g=tp===1?new THREE.BoxGeometry(1,1,1,sg,sg,sg):new THREE.CylinderGeometry(.7071*tp,.7071,1,4,sg).rotateY(Math.PI/4);break;
+  case 'cyl':case 'cone':g=new THREE.CylinderGeometry(.5*tp,.5,1,18,sg);break;
+  case 'sph':g=new THREE.SphereGeometry(.5,nz?24:16,nz?18:12);break;
+  case 'oct':g=new THREE.OctahedronGeometry(.6,nz?2:0);break;
+  case 'wedge':{const sh=new THREE.Shape();sh.moveTo(-.5,-.5);sh.lineTo(.5,-.5);sh.lineTo(.5,.5);sh.closePath();g=new THREE.ExtrudeGeometry(sh,{depth:1,bevelEnabled:false}).translate(0,0,-.5).rotateY(Math.PI/2);break}
+  case 'prism':g=new THREE.CylinderGeometry(.5*tp,.5,1,3,sg);break;
+  case 'hex':g=new THREE.CylinderGeometry(.5*tp,.5,1,6,sg);break;
+  case 'pyr':g=new THREE.CylinderGeometry(.7071*tp,.7071,1,4,sg).rotateY(Math.PI/4);break;
+  case 'tor':g=new THREE.TorusGeometry(.36,.14,10,26).rotateX(Math.PI/2);break;
+  case 'cap':g=new THREE.CapsuleGeometry(.3,.4,6,14).scale(1/.6,1,1/.6);break;
+  case 'dome':g=new THREE.SphereGeometry(.5,16,8,0,Math.PI*2,0,Math.PI/2).scale(1,2,1).translate(0,-.5,0);break;
+  case 'rock':g=new THREE.IcosahedronGeometry(.5,1);break;
+  default:g=new THREE.BoxGeometry(1,1,1)}
+ const n2=nz||(s==='rock'?.3:0);
+ if(n2){const pos=g.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i),l=Math.hypot(x,y,z)||1,n=Math.sin(x*7.3+sd)*Math.cos(y*6.1+sd*1.7)*Math.sin(z*8.7+sd*.3);const k=n*n2*.35;pos.setXYZ(i,x+x/l*k,y+y/l*k,z+z/l*k)}g.computeVertexNormals()}
+ GC[key]=g;return g}
+const volOf=p=>Math.abs(p.z[0]*p.z[1]*p.z[2])*(SHF[p.s]||1);
+const PROP_T=60,TURB_T=95,THR_T=120,G_ATM=8;
+const MOD={
+ hull:{n:'Casco / estrutura',ic:'🧱',dn:1,col:'#8794a0',s:'box',z:[3,1.4,5],buoy:1,cost:2},
+ deco:{n:'Detalhe / decoração',ic:'✨',dn:.1,col:'#aab4be',s:'box',z:[.6,.4,1],cost:0},
+ armor:{n:'Blindagem',ic:'🛡',dn:2.4,col:'#56626e',s:'wedge',z:[2.4,1,2.4],arm:1,cost:6},
+ cockpit:{n:'Cabine de comando',ic:'🪑',dn:.7,col:'#6aa0c8',s:'dome',z:[2.4,1.3,2.8],seat:1,int:'cabin',buoy:1,cost:25},
+ crew:{n:'Alojamento',ic:'🛏',dn:.6,col:'#9aa7b4',s:'cap',z:[2.4,3,2.4],r:[90,0,0],int:'bunk',buoy:1,cost:10,food:4},
+ cargo:{n:'Carga',ic:'📦',dn:.5,col:'#a58e5a',s:'box',z:[3,2,3.5],int:'cargo',buoy:1,cost:8},
+ lab:{n:'Laboratório',ic:'🔬',dn:.7,col:'#8ab0c0',s:'hex',z:[3,2,3],int:'lab',buoy:1,cost:30},
+ hangar:{n:'Hangar',ic:'🏭',dn:.4,col:'#6e7a86',s:'box',z:[6,3,8],int:'hangar',buoy:1,cost:40},
+ battery:{n:'Bateria',ic:'🔋',dn:1.6,col:'#4fd06a',s:'box',z:[1.6,1.2,1.6],bat:420,int:'tech',cost:25,em:0},
+ reactor:{n:'Reator',ic:'☢️',dn:2,col:'#ffb347',s:'sph',z:[2,2,2],gen:14,rFuel:.12,int:'reactor',cost:80,em:1},
+ solar:{n:'Painel solar',ic:'☀️',dn:.3,col:'#2a60ff',s:'box',z:[4,.15,2.4],gen:3.5,cost:18,em:1},
+ tank:{n:'Tanque de combustível',ic:'⛽',dn:.8,col:'#d8a23a',s:'cap',z:[1.4,2.4,1.4],fuel:420,int:'tech',buoy:1,cost:15},
+ motor:{n:'Motor elétrico',ic:'⚙️',dn:1.8,col:'#5a6b7a',s:'cyl',z:[1.2,1.4,1.2],mE:34,cost:30},
+ engine:{n:'Motor a combustão',ic:'🔥',dn:2.4,col:'#7a4a3a',s:'box',z:[1.8,1.5,2.2],mF:60,cost:45},
+ wheel:{n:'Roda',ic:'🛞',dn:.9,col:'#222',s:'cyl',z:[1.6,.9,1.6],r:[0,0,90],grip:1,cost:12},
+ track:{n:'Esteira',ic:'⛓',dn:1.4,col:'#2a2f35',s:'box',z:[1,1.3,4.5],grip:1.8,cost:25},
+ leg:{n:'Perna mecânica',ic:'🦿',dn:1.6,col:'#445566',s:'cyl',z:[.6,3,.6],grip:1.4,cost:30},
+ prop:{n:'Hélice / rotor',ic:'🌀',dn:.4,col:'#cfd8dc',s:'box',z:[5,.12,.6],prop:1,cost:20},
+ turbine:{n:'Turbina a jato',ic:'🛩',dn:1.6,col:'#8a949e',s:'cyl',z:[1.4,3,1.4],r:[90,0,0],turb:1,cost:70},
+ thruster:{n:'Propulsor espacial',ic:'🚀',dn:1.4,col:'#44ddff',s:'cone',z:[1.6,2.4,1.6],r:[90,0,0],thr:1,cost:90,em:1,e:1},
+ wing:{n:'Asa',ic:'🪽',dn:.3,col:'#a5b0bb',s:'wedge',z:[6,.25,3],wing:1,cost:15},
+ float:{n:'Flutuador',ic:'🛟',dn:.2,col:'#e8c33a',s:'cap',z:[1,4,1],r:[90,0,0],buoy:3,cost:10},
+ gun:{n:'Canhão',ic:'💥',dn:1.2,col:'#333333',s:'cyl',z:[.5,3.2,.5],r:[90,0,0],gun:1,dmg:14,rng:50,cost:40},
+ gunH:{n:'Canhão pesado',ic:'☄',dn:3,col:'#2a2a2a',s:'cyl',z:[.7,5,.7],r:[90,0,0],gun:1,dmg:55,rng:95,cost:120}};
+for(const k in MOD){const m=MOD[k];m.rv=Math.max(.2,volOf({s:m.s,z:m.z}))}
+const INTPRE=[['cabin','Cabine'],['bunk','Alojamento'],['cargo','Carga'],['reactor','Reator'],['lab','Laboratório'],['tech','Sala técnica'],['hangar','Hangar'],['empty','Vazio']];
+function hsl(h,s,l){h=((h%360)+360)%360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return l-a*Math.max(-1,Math.min(k-3,9-k,1))};const x=v=>Math.round(v*255).toString(16).padStart(2,'0');return '#'+x(f(0))+x(f(8))+x(f(4))}
+function genProps(pre,w,d,h,seed){const R=RNG((seed|0)*7+3),o=[],rr=(a,b)=>a+R()*(b-a),pk=a=>a[Math.floor(R()*a.length)];
+ const hw=w/2-1,hd=d/2-1;
+ switch(pre){
+ case 'cabin':o.push(P('box',0,.4,0,1,.8,1,'#333333'),P('box',0,1.2,-.5,1,1.2,.25,'#444444'),P('box',0,.9,d/2-1.3,Math.min(w-1.5,6),.9,.9,'#26323f'),P('box',0,1.6,d/2-1.5,Math.min(w-2,5),.7,.1,'#44ddff',[-20,0,0],1),P('box',w/2-.5,1,0,.5,1.6,d*.5,'#26323f'),P('box',-w/2+.5,1,0,.5,1.6,d*.5,'#26323f'));break;
+ case 'bunk':{const n=Math.max(2,Math.floor(w/3));for(let i=0;i<n;i++){const x=(i-(n-1)/2)*(w/n);o.push(P('box',x,.5,-d/2+2,1.2,.5,2.4,pk(['#9a6a6a','#6a7a9a','#6a9a7a'])),P('box',x,.75,-d/2+.9,1,.2,.5,'#eeeeee'))}o.push(P('box',0,1.1,d/2-.6,w-1.5,2.2,.6,'#46576a'));break}
+ case 'cargo':{const n=Math.floor(w*d/5);for(let i=0;i<n;i++)o.push(P('box',rr(-hw,hw),.5+(R()<.3?1:0)*.9,rr(-hd,hd),rr(.9,1.7),rr(.8,1.3),rr(.9,1.7),pk(['#a58e5a','#8a7a5a','#6a7a8a','#7a5a4a'])));break}
+ case 'reactor':o.push(P('cyl',0,h/2,0,Math.min(w,d)*.35,h,Math.min(w,d)*.35,'#ffb347',0,1),P('cyl',0,.4,0,Math.min(w,d)*.6,.8,Math.min(w,d)*.6,'#37424d'),P('cyl',0,h-.4,0,Math.min(w,d)*.6,.8,Math.min(w,d)*.6,'#37424d'),P('box',hw,1,0,.6,2,d*.6,'#26323f'),P('box',-hw,1,0,.6,2,d*.6,'#26323f'));break;
+ case 'lab':for(let i=0;i<3;i++)o.push(P('box',rr(-hw,hw),.55,rr(-hd,hd),rr(1.4,2.4),1.1,1,'#aab4be'),P('sph',rr(-hw,hw),1.6,rr(-hd,hd),.5,.5,.5,'#88ff88',0,1));o.push(P('box',0,1.5,d/2-.5,w-2,1.4,.2,'#44ddff',0,1));break;
+ case 'tech':for(let i=0;i<5;i++)o.push(P('cyl',(i-2)*(w/6),.8,0,.9,1.6,.9,'#4fd06a',0,1));o.push(P('box',0,1.2,d/2-.5,w-1.5,1.6,.5,'#26323f'));break;
+ case 'hangar':o.push(P('cyl',0,.1,0,Math.min(w,d)*.6,.2,Math.min(w,d)*.6,'#44ddff',0,1),P('box',hw,1.2,0,.6,2.4,d*.8,'#37424d'),P('box',-hw,1.2,0,.6,2.4,d*.8,'#37424d'));break;
+ }
+ return o}
+function mkIn(pre,p,seed){const w=clamp(Math.round(p.z[0]*2+2),4,16),d=clamp(Math.round(p.z[2]*2+2),4,16),h=3.2;return{pre,w,d,h,col:'#46576a',seed:seed|0,props:genProps(pre,w,d,h,seed)}}
+function M(id,x,y,z,o){o=o||{};const m=MOD[id],zz=o.z||m.z,p=P(o.s||m.s,x,y,z,zz[0],zz[1],zz[2],o.c||m.col,JSON.parse(JSON.stringify(o.r||m.r||[0,0,0])),o.e!=null?o.e:!!m.em);p.f=id;if(o.tp!=null)p.tp=o.tp;if(o.nz){p.nz=o.nz;p.sd=o.sd||1}if(m.int)p.in=mkIn(m.int,p,o.seed||((Math.random()*999)|0));return p}
+function mirror(p){const q=clone(p);q.p[0]=-q.p[0];q.r[1]=-q.r[1];q.r[2]=-q.r[2];return q}
+/* ---- análise física: massa, empuxo, energia, modos de locomoção ---- */
+function analyze(parts){
+ const a={mass:0,bat:0,fuel:0,gen:0,mE:0,mF:0,grip:0,prop:0,turb:0,thr:0,wingA:0,buoy:0,dmg:0,rng:0,gunN:0,arm:0,seat:0,ints:0,cost:[0,0,0],rFuel:0,heavy:false,msgs:[],n:parts.length};
+ for(const p of parts){const m=MOD[p.f||'hull']||MOD.hull,v=volOf(p),sc=Math.pow(clamp(v/m.rv,.25,8),.85);
+  const vm=Math.pow(v,.8)*m.dn;a.mass+=vm;a.bat+=(m.bat||0)*sc;a.fuel+=(m.fuel||0)*sc;a.gen+=(m.gen||0)*sc;a.mE+=(m.mE||0)*sc;a.mF+=(m.mF||0)*sc;if(m.grip){a.nGrip=(a.nGrip||0)+1;a.grip+=m.grip*clamp(Math.max(p.z[0],p.z[1],p.z[2])/1.6,.6,2)}
+  if(m.prop)a.prop+=PROP_T*Math.pow(p.z[0]/5,2);if(m.turb)a.turb+=TURB_T*sc;if(m.thr)a.thr+=THR_T*sc;if(m.wing)a.wingA+=p.z[0]*p.z[2];
+  a.buoy+=v*(m.buoy||0)*1.2;if(m.arm)a.arm+=vm;if(m.seat)a.seat++;if(p.in)a.ints++;if(m.rFuel)a.rFuel+=m.rFuel*sc;
+  if(m.gun){a.gunN++;a.dmg+=m.dmg*Math.pow(sc,.8);a.rng=Math.max(a.rng,m.rng*Math.pow(sc,.3));if(m.dmg*sc>40)a.heavy=true}
+  a.cost[0]+=Math.pow(vm,.85)*3+(m.cost||0)*Math.sqrt(sc);a.cost[2]+=m.e?(m.cost||0)*.35*Math.sqrt(sc):0;a.cost[1]+=m.food||0}
+ a.mass=Math.max(1,a.mass);const M_=a.mass;
+ const haveE=a.bat>0||a.gen>0,haveF=a.fuel>0,drive=(haveE?a.mE:0)+(haveF?a.mF:0);
+ a.gforce=Math.min(drive,a.grip*22);a.ground=a.grip>=2&&a.gforce>0;a.spdG=a.ground?clamp(Math.sqrt(a.gforce/M_)*14,2,48):0;
+ a.propT=Math.min(a.prop,drive*3.5);a.turbT=haveF?a.turb:0;a.thrT=haveF?a.thr:0;
+ a.thrAtm=a.propT+a.turbT+a.thrT;a.thrVac=a.thrT;a.hover=a.thrAtm/(M_*G_ATM);a.wingR=a.wingA*14/(M_*G_ATM);
+ a.air=a.thrAtm>0&&(a.hover>=1||(a.wingA>0&&a.hover+a.wingR>=1.05));
+ a.space=a.thrVac/M_>=.12;a.floats=a.buoy>=M_*.85;a.wThr=a.propT*6+a.turbT+a.thrT;a.water=a.floats&&a.wThr>0;
+ a.spdA=a.air?clamp(a.thrAtm/M_*11,10,140):0;a.spdS=a.space?clamp(a.thrVac/M_*30,10,240):0;a.spdW=a.water?clamp(a.wThr/M_*14,4,48):0;
+ a.eUse=(haveE?a.mE:0)*.17+(a.prop>0&&haveE&&!haveF?a.propT*.1:0);a.fUse=(haveF?a.mF:0)*.012+(a.turbT+a.thrT)*.011;
+ const ms=a.msgs,ok=(c,t)=>ms.push([c,t]);
+ ok(a.seat>0,'Cabine de comando (piloto)');
+ ok(drive>0||a.turbT>0||a.thrT>0,'Fonte de força (motor + bateria ou tanque; turbina/propulsor + tanque)');
+ if((a.nGrip||0)>=2&&!a.ground)ok(false,'Rodas/esteiras precisam de motor + bateria/tanque e ao menos 2 apoios');
+ if(a.mE>0&&!haveE)ok(false,'Motor elétrico sem bateria ou reator');
+ if(a.mF>0&&!haveF)ok(false,'Motor a combustão sem tanque de combustível');
+ if(a.prop>0&&drive<=0)ok(false,'Hélice sem motor (e energia/combustível)');
+ if(a.turb>0&&!haveF)ok(false,'Turbina sem tanque de combustível');
+ if(a.thr>0&&!haveF)ok(false,'Propulsor sem tanque de combustível');
+ if(a.wingA>0&&!a.air&&!a.space)ok(false,'Asas sem empuxo suficiente para voar');
+ if(a.buoy>0&&!a.floats&&(a.prop>0||a.turb>0))ok(false,'Não flutua: precisa de mais casco/flutuadores');
+ a.modes=[a.ground&&'solo',a.water&&'água',a.air&&'ar',a.space&&'espaço'].filter(Boolean);
+ ok(a.modes.length>0,'Locomoção: '+(a.modes.join(', ')||'nenhuma'));
+ a.valid=a.seat>0&&a.modes.length>0;
+ a.hp=Math.round(40+M_*3+a.arm*8);a.dmg=Math.round(a.dmg*.75);a.cd=Math.max(.25,+(.9/Math.sqrt(Math.max(1,a.gunN))).toFixed(2));a.splash=a.heavy?5:0;
+ a.cost=a.cost.map(c=>Math.round(c));a.t=clamp(Math.round(5+M_*.25),5,90);a.pop=clamp(Math.ceil(M_/22)+1,1,20);
+ let mr=1;for(const p of parts)mr=Math.max(mr,Math.hypot(Math.abs(p.p[0])+p.z[0]/2,Math.abs(p.p[2])+p.z[2]/2));a.r=Math.max(1.2,mr*.75);
+ a.spRts=Math.max(2,a.air?a.spdA/3:a.space?a.spdS/3:a.ground?a.spdG:a.spdW);
+ const cp=parts.find(p=>(MOD[p.f]||{}).seat);a.eye=cp?[cp.p[1]+cp.z[1]*.25,cp.p[2]+cp.z[2]*.1]:[2,0];a.my=a.air||a.space?0:1.5;
+ a.fac=a.space&&!a.air&&!a.ground?['dock','mother']:(a.water&&!a.ground&&!a.air?['shipyard']:(a.air&&!a.ground?['barracks','launchpad']:['barracks']));
+ return a}
+/* ---- genoma: gerador paramétrico ---- */
+const KINDS=[['car','Carro / buggy'],['tank','Tanque de esteiras'],['boat','Barco'],['heli','Helicóptero'],['jet','Caça a jato'],['hover','Hovercraft'],['amph','Anfíbio'],['ship','Nave espacial'],['mother','Nave-mãe modular']];
+const BASEL={car:7,tank:8,boat:9,heli:7,jet:10,ship:16,mother:60,hover:7,amph:8};
+function defGenome(k,seed){return{k,seed:seed||1,L:1,Wd:1,H:1,tp:1,org:0,n:4,hue:210}}
+function gen(g){const R=RNG(g.seed*131+7),rr=(a,b)=>a+R()*(b-a),pk=a=>a[Math.floor(R()*a.length)],out=[];const k=g.k,B=BASEL[k]||8;
+ const L=B*g.L,W=B*.42*g.Wd,H=B*.14*g.H,c1=hsl(g.hue,.22,.6),c2=hsl(g.hue+28,.6,.45),nz=g.org,tp=g.tp,sd=g.seed;
+ const add=p=>{out.push(p);return p},pr=p=>{out.push(p);if(Math.abs(p.p[0])>.05)out.push(mirror(p))};
+ const hull=(y,w,h,l,o)=>{o=o||{};return add(M('hull',0,y,o.zc||0,{z:[w,h,l],c:o.c||c1,s:o.s||pk(['box','box','hex','rock']),tp:o.tp!=null?o.tp:tp,nz:o.nz!=null?o.nz:nz,sd}))};
+ const stripe=(y,l)=>add(M('deco',0,y,0,{z:[W*.3,.15,l],c:'t',e:true}));
+ if(k==='car'){const el=R()<.5;hull(H*.8+.5,W,H,L);add(M('cockpit',0,H*1.5+.6,L*.08,{z:[W*.75,H*.9,L*.32],c:c2}));
+  if(el){add(M('battery',0,H*.5+.5,-L*.22,{z:[W*.5,H*.7,L*.2]}));add(M('motor',0,H*.5+.5,-L*.38,{z:[1.4,1.4,1.4]}))}
+  else{add(M('engine',0,H*.5+.5,-L*.34,{z:[W*.5,H*.8,L*.2]}));add(M('tank',0,H*.5+.5,-L*.1,{z:[1.1,W*.5,1.1],r:[0,0,90]}))}
+  const ax=g.n>6?3:2;for(let i=0;i<ax;i++){const z=ax===2?(i?-L*.32:L*.32):(i-1)*L*.34;pr(M('wheel',W*.58,.6,z,{z:[1.7,.9,1.7]}))}
+  if(R()<.6)add(M('gun',0,H*1.7+.7,L*.3,{z:[.4,2.2,.4]}));stripe(H*1.3+.6,L*.7)}
+ else if(k==='tank'){hull(H*.7+.7,W+.8,H*1.1,L*.9,{s:'box'});pr(M('track',W/2+.9,.8,0,{z:[1.2,1.6,L*.98]}));add(M('armor',0,H*.7+1,L*.5,{z:[W+.4,H*.9,L*.2]}));
+  add(M('engine',0,H*.7+.7,-L*.3,{z:[W*.6,H*.8,L*.2]}));add(M('tank',0,H*.5+.9,-L*.05,{z:[1.2,W*.6,1.2],r:[0,0,90]}));
+  add(M('cockpit',0,H*1.7+1,0,{s:'cap',z:[W*.7,H*.8,W*.7],c:c2,r:[0,0,0]}));add(M('gunH',0,H*1.7+1,L*.42,{z:[.6,L*.62,.6]}));if(R()<.5)add(M('gun',W*.3,H*2.1+1,0,{z:[.3,2,.3]}));stripe(H*1.3+.7,L*.6)}
+ else if(k==='boat'){hull(.9,W,H*.9,L);add(M('hull',0,.9,L*.5+L*.15,{s:'wedge',z:[W,H*.9,L*.3],c:c1}));add(M('cockpit',0,H*1.4+.6,-L*.05,{z:[W*.7,H*.9,L*.3],c:c2}));
+  add(M('engine',0,.9,-L*.3,{z:[W*.5,H*.7,L*.2]}));add(M('tank',0,.9,-L*.1,{z:[1.1,W*.5,1.1],r:[0,0,90]}));add(M('prop',0,.2,-L*.5-.4,{z:[W*.5,.12,.5],r:[90,0,0]}));
+  if(R()<.6)add(M('gun',0,H*1.4+.6,L*.3,{z:[.4,2.4,.4]}));if(g.n>5)add(M('crew',0,.9,L*.1,{z:[W*.6,L*.18,W*.6]}));stripe(H*1.1+.6,L*.6)}
+ else if(k==='heli'){add(M('hull',0,2,0,{s:'cap',z:[W*.9,L*.55,W*.9],r:[90,0,0],c:c1,tp,nz,sd}));add(M('cockpit',0,2.4,L*.28,{z:[W*.8,W*.7,L*.25],c:c2}));
+  add(M('hull',0,2.4,-L*.5,{s:'cyl',z:[.5,L*.55,.5],r:[90,0,0],c:c1}));add(M('tank',0,1.2,-L*.05,{z:[1,W*.6,1],r:[0,0,90]}));add(M('engine',0,2.9,-L*.1,{z:[W*.9,W*.8,L*.3]}));
+  add(M('prop',0,3.6,0,{z:[L*1.5,.12,.9]}));add(M('prop',.3,2.6,-L*.8,{z:[L*.3,.1,.3],r:[0,0,90]}));pr(M('hull',W*.5,.3,0,{z:[.3,.3,L*.5],c:c2}));if(R()<.5)pr(M('gun',W*.55,1.2,L*.15,{z:[.3,2,.3]}))}
+ else if(k==='jet'){add(M('hull',0,1.2,0,{s:'cap',z:[W*.6,L*1.1,W*.6],r:[90,0,0],c:c1,tp,nz,sd}));add(M('cockpit',0,1.7,L*.18,{z:[W*.5,W*.5,L*.22],c:c2}));
+  pr(M('wing',W*1.4,1,-L*.1,{z:[L*.7,.25,L*.35],c:c1}));pr(M('turbine',W*.4,1,-L*.42,{z:[1.6,L*.4,1.6]}));add(M('tank',0,1.2,-L*.15,{z:[.9,W*.5,.9],r:[0,0,90]}));
+  pr(M('hull',W*.25,1.5,-L*.45,{s:'wedge',z:[.2,1.4,L*.2],c:c2}));pr(M('wheel',W*.5,.2,-L*.05,{z:[.9,.4,.9]}));add(M('wheel',0,.2,L*.3,{z:[.9,.4,.9]}));add(M('engine',0,1,-L*.25,{z:[1.2,1.2,L*.2]}));pr(M('gun',W*.9,.8,L*.1,{z:[.25,1.8,.25]}))}
+ else if(k==='hover'){hull(.9,W,H*.8,L,{s:'hex'});add(M('cockpit',0,H*1.2+.4,L*.1,{z:[W*.7,H*.8,L*.3],c:c2}));add(M('battery',0,.9,-L*.2,{z:[W*.5,.9,L*.2]}));
+  [[1,1],[1,-1]].forEach(a=>pr(M('prop',W*.55,H*.6+.9,a[1]*L*.3,{z:[W*1.3,.12,.8]})));pr(M('motor',W*.55,H*.6+.4,L*.3,{z:[.9,.9,.9]}));pr(M('motor',W*.55,H*.6+.4,-L*.3,{z:[.9,.9,.9]}));add(M('prop',0,H*.6+.9,-L*.5,{z:[W*.7,.12,.7],r:[90,0,0]}));add(M('float',W*.62,.4,0,{z:[.9,L*.8,.9],r:[0,0,0]}));add(M('float',-W*.62,.4,0,{z:[.9,L*.8,.9],r:[0,0,0]}))}
+ else if(k==='amph'){hull(H*.8+.5,W,H*1.1,L);add(M('cockpit',0,H*1.5+.6,L*.08,{z:[W*.75,H*.9,L*.3],c:c2}));add(M('engine',0,H*.5+.5,-L*.34,{z:[W*.5,H*.8,L*.2]}));add(M('tank',0,H*.5+.5,-L*.1,{z:[1.1,W*.5,1.1],r:[0,0,90]}));
+  pr(M('wheel',W*.58,.6,L*.3,{z:[1.7,.9,1.7]}));pr(M('wheel',W*.58,.6,-L*.3,{z:[1.7,.9,1.7]}));add(M('prop',0,.5,-L*.5-.4,{z:[W*.5,.12,.5],r:[90,0,0]}));add(M('float',W*.62,.5,0,{z:[.8,L*.7,.8]}));add(M('float',-W*.62,.5,0,{z:[.8,L*.7,.8]}))}
+ else if(k==='ship'){hull(0,W*1.2,H*1.3,L,{s:pk(['box','hex','rock'])});add(M('cockpit',0,H*1.1,L*.3,{z:[W*.8,H*.9,L*.22],c:c2}));
+  const nt=2+(g.n>5?2:0);for(let i=0;i<nt;i++){const x=(i-(nt-1)/2)*W*.55;add(M('thruster',x,0,-L*.55,{z:[W*.45,L*.12,W*.45]}))}
+  add(M('tank',W*.3,-H*.5,-L*.1,{z:[1.4,W*.5,1.4],r:[90,0,0]}));add(M('tank',-W*.3,-H*.5,-L*.1,{z:[1.4,W*.5,1.4],r:[90,0,0]}));add(M('reactor',0,0,-L*.3,{z:[W*.5,W*.5,W*.5]}));add(M('battery',0,H*.4,-L*.1,{z:[W*.4,.8,W*.4]}));
+  add(M('crew',0,-H*.2,L*.05,{z:[W*.7,L*.2,W*.7]}));pr(M('wing',W*.8,0,-L*.25,{z:[W*.9,.25,L*.3],c:c1}));pr(M('gun',W*.5,H*.8,L*.3,{z:[.4,L*.2,.4]}));stripe(H*.7,L*.7)}
+ else if(k==='mother'){hull(0,W*1.4,H*1.6,L,{s:'box'});hull(H*1.2,W*1.1,H*1.2,L*.6,{zc:-L*.1,s:'box'});add(M('cockpit',0,H*2.4,L*.18,{z:[W*.5,H*.8,L*.12],c:c2}));
+  add(M('hangar',0,-H*.2,-L*.05,{z:[W*.8,H*.9,L*.22]}));add(M('crew',0,H*1.2,-L*.15,{z:[W*.8,L*.12,W*.5]}));add(M('cargo',0,H*1.2,-L*.3,{z:[W*.7,H*.8,L*.1]}));add(M('lab',0,H*.3,L*.25,{z:[W*.6,H*.8,W*.4]}));
+  pr(M('reactor',W*.35,0,-L*.38,{z:[W*.3,W*.3,W*.3]}));add(M('battery',0,0,-L*.3,{z:[W*.3,H*.5,W*.3]}));pr(M('tank',W*.5,0,-L*.1,{z:[W*.25,L*.18,W*.25],r:[90,0,0]}));
+  const nt=4+(g.n>5?2:0);for(let i=0;i<nt;i++)add(M('thruster',(i-(nt-1)/2)*W*.4,0,-L*.55,{z:[W*.3,L*.08,W*.3]}));pr(M('gunH',W*.5,H*1.8,L*.1,{z:[W*.1,L*.2,W*.1]}));pr(M('gun',W*.62,H*.8,L*.3,{z:[W*.05,L*.12,W*.05]}));pr(M('wing',W*1.1,0,-L*.3,{z:[W*.8,H*.3,L*.2],c:c1}));stripe(H*1.9,L*.6)}
+ for(let i=0;i<Math.max(0,g.n-2);i++){const x=rr(-W*.4,W*.4),z=rr(-L*.4,L*.4),y=(k==='mother'||k==='ship')?H*1.6:H*1.2+1;if(R()<.5)add(M('deco',x,y+rr(0,1),z,{z:[rr(.2,.6)*B/8,rr(.4,1.2)*B/8,rr(.2,.6)*B/8],c:pk([c1,c2,'#333333'])}));else add(M('deco',x,y,z,{s:pk(['cyl','cone','hex']),z:[.3*B/8,rr(.8,2)*B/8,.3*B/8],c:c2}))}
+ return out}
+function mutate(parts,R,amt){for(const p of parts){const m=MOD[p.f||'hull']||{};if(p.f==='deco'||p.f==='hull'||p.f==='armor'){p.p=p.p.map((v,i)=>v+(R()-.5)*amt*(p.z[i]||1)*.5);p.z=p.z.map(v=>Math.max(.15,v*(1+(R()-.5)*amt)));if(p.nz!=null||R()<.2)p.nz=clamp((p.nz||0)+(R()-.5)*amt*.6,0,.8),p.sd=(p.sd||1)+((R()*9)|0)}
+  if(p.c!=='t'&&/^#/.test(p.c)&&R()<.5){const h=parseInt(p.c.slice(1),16);const r=(h>>16)&255,g=(h>>8)&255,b=h&255;const f=1+(R()-.5)*amt;p.c='#'+[r,g,b].map(v=>Math.round(clamp(v*f,0,255)).toString(16).padStart(2,'0')).join('')}}
+ const hull=parts.filter(p=>p.f==='hull');if(hull.length&&R()<.7){const h=pick(hull);parts.push(Object.assign(clone(h),{f:'deco',s:pick(['box','hex','wedge','rock']),p:[h.p[0]+(R()-.5)*h.z[0],h.p[1]+h.z[1]*.6,h.p[2]+(R()-.5)*h.z[2]],z:[h.z[0]*.3,h.z[1]*.3,h.z[2]*.2]}))}return parts}
+
+/* ---- interiores genéricos ---- */
+function intKit(s){const MM={};const mt=(c,e)=>{const k=c+(e?1:0);return MM[k]||(MM[k]=new THREE.MeshStandardMaterial({color:c,roughness:.6,metalness:.4,emissive:e?c:0x000000,emissiveIntensity:e?1.1:0}))};
+ const box=(x0,y0,z0,x1,y1,z1,c,e)=>{const m=new THREE.Mesh(GEO.box,mt(c,e));m.scale.set(x1-x0,y1-y0,z1-z0);m.position.set((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);s.add(m);return m};
+ const wall=(ax,fx,a0,a1,h,col,gaps)=>{const iv=[];let p=a0;gaps.sort((u,v)=>u[0]-v[0]).forEach(g=>{if(g[0]>p)iv.push([p,g[0]]);p=g[1]});if(p<a1)iv.push([p,a1]);iv.forEach(q=>{if(ax==='z')box(fx-.3,0,q[0],fx+.3,h,q[1],col);else box(q[0],0,fx-.3,q[1],h,fx+.3,col)})};
+ const room=(x0,z0,x1,z1,h,col,doors)=>{box(x0,-.4,z0,x1,0,z1,'#1c242d');box(x0,h,z0,x1,h+.4,z1,'#222c36');const g=sd=>doors.filter(d=>d.s===sd).map(d=>[d.c-d.w/2,d.c+d.w/2]);
+  wall('z',x0,z0,z1,h,col,g('w'));wall('z',x1,z0,z1,h,col,g('e'));wall('x',z0,x0,x1,h,col,g('s'));wall('x',z1,x0,x1,h,col,g('n'));box(x0+.8,h-.4,(z0+z1)/2-.25,x1-.8,h,(z0+z1)/2+.25,'#7fe8ff',1)};
+ return{box,room,mt}}
+function addRoom(s,kit,x0,r,doors){const w=r.w,d=r.d,h=r.h;kit.room(x0,-d/2,x0+w,d/2,h,r.col||'#46576a',doors);(r.props||[]).forEach(p=>{const m=partMesh(p,TC[0]);m.position.x+=x0+w/2;s.add(m)});const l=new THREE.PointLight(0xdfeaff,.9,Math.max(w,d)*3);l.position.set(x0+w/2,h-.6,0);s.add(l)}
+function spriteLabel(s,t,x,y,z){const c=document.createElement('canvas');c.width=512;c.height=96;const g=c.getContext('2d');g.fillStyle='#000a';g.fillRect(0,0,512,96);g.fillStyle='#8ef';g.font='bold 32px sans-serif';g.textAlign='center';g.fillText(t,256,60);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));sp.scale.set(6,1.1,1);sp.position.set(x,y,z);s.add(sp)}
+INT.motherT={scene:INT.scene,rects:INT.rects,spots:INT.spots,sx:0,sz:-48,yaw:0};
+function customInt(v){const parts=DESIGN[v.type].filter(p=>p.in).sort((a,b)=>b.p[2]-a.p[2]);if(!parts.length)return null;
+ const s=new THREE.Scene();s.background=new THREE.Color(0x03060c);s.add(new THREE.AmbientLight(0x9ab0c8,.85));const kit=intKit(s),rects=[],spots=[];let X=0;
+ parts.forEach((p,i)=>{const r=p.in,doors=[];if(i>0||true)doors.push({s:'w',c:0,w:3.5});if(i<parts.length-1)doors.push({s:'e',c:0,w:3.5});addRoom(s,kit,X,r,doors);rects.push([X,-r.d/2,X+r.w,r.d/2]);if(i<parts.length-1)rects.push([X+r.w-2,-1.75,X+r.w+2,1.75]);
+  if((MOD[p.f]||{}).seat){spots.push({x:X+r.w/2,z:0,t:'Pilotar',fn:()=>{const m=INT.m;INT.on=false;enterFps(m)}});spriteLabel(s,'Pilotar (E)',X+r.w/2,2.6,0)}X+=r.w});
+ spots.push({x:2,z:0,t:'Sair do veículo',fn:exitCustomInt});spriteLabel(s,'Sair (E)',2,2.6,0);
+ return{scene:s,rects,spots,sx:2.5,sz:0,yaw:Math.PI/2}}
+function exitCustomInt(){const v=INT.m;if(!v)return;if(!canLeave(v)){toast('Pouse no solo ou atraque para sair');return}INT.on=false;leaveVehicle(v)}
+function enterInterior(m){const a=pl.e;if(!a)return;let T=INT.motherT;if(m.def.custom){T=customInt(m);if(!T){enterFps(m);return}}
+ if(fps.on)releaseFps();INT.scene=T.scene;INT.rects=T.rects;INT.spots=T.spots;fps.on=true;fps.e=a;a.fps=true;a.inside=m;a.mesh.visible=false;INT.on=true;INT.m=m;INT.x=T.sx;INT.z=T.sz;INT.yaw=T.yaw||0;fps.inp.pitch=0;
+ $('fpsui').style.display='block';document.body.classList.add('fps');$('panel').style.display='none';cancelBuild();toast('🚀 Interior: ande até os pontos brilhantes e aperte E')}
+/* ---- registro de projetos personalizados ---- */
+const CUST=[];let custSeq=1;
+function custDesc(d){const a=d.an;return 'Projeto seu · '+(a.modes.join('/')||'sem locomoção')+' · massa '+a.mass.toFixed(0)+' t · vel. '+Math.round(a.spRts*(a.air||a.space?3.2:1))+' · ❤ '+a.hp+(a.dmg?' · dano '+a.dmg:'')+' · ⚡'+Math.round(a.bat)+' ⛽'+Math.round(a.fuel)+(d.hasInt?' · com interior':'')+'. Edite no Estaleiro (🛠).'}
+function registerCustom(des){const a=analyze(des.parts);const id=des.id;
+ D(id,{n:des.name,L:(a.space&&!a.air&&!a.ground)?'s':'g',k:'u',custom:1,an:a,hp:a.hp,sp:a.spRts,dmg:a.dmg,rng:a.rng||30,cd:a.cd,splash:a.splash,cost:a.cost,t:a.t,r:a.r,pop:a.pop,role:a.dmg>0?'mil':'util',my:a.my,eye:a.eye,fly:(a.air||a.space)&&!a.ground,naval:(a.water&&!a.ground&&!a.air&&!a.space)?1:0,hasInt:a.ints>0,fac:a.fac,parts:clone(des.parts)});
+ DESIGN[id]=clone(des.parts);DEF[id].v0=vol(DESIGN[id]);DEF[id].R0=rad(DESIGN[id]);const i=CUST.findIndex(c=>c.id===id);if(i<0)CUST.push(des);else CUST[i]=des;return DEF[id]}
+function saveCustom(){try{localStorage.setItem('imperio_custom_v1',JSON.stringify(CUST.map(c=>({id:c.id,name:c.name,parts:c.parts,g:c.g}))))}catch(e){}}
+(function(){try{const a=JSON.parse(localStorage.getItem('imperio_custom_v1')||'[]');a.forEach(d=>{if(d&&d.parts&&d.id){registerCustom(d);custSeq=Math.max(custSeq,+d.id.slice(2)+1||1)}})}catch(e){}})();
+function prodFor(b){const l=(b.def.prod||[]).slice();if(b.team===0)CUST.forEach(c=>{const d=DEF[c.id];if(d&&d.an.valid&&d.fac.includes(b.type))l.push(c.id)});return l}
+/* ---- física do veículo personalizado (modelo simplificado: empuxo/massa, gravidade, flutuação, energia, combustível) ---- */
+function driveCustom(e,inp,dt){const a=e.def.an;e.yaw+=inp.dyaw;inp.dyaw=0;inp.pitch=clamp(inp.pitch+inp.dpitch,-1.4,1.4);inp.dpitch=0;
+ let f=inp.fwd,r=inp.str,u=inp.up||0;const l=Math.hypot(f,r);if(l>1){f/=l;r/=l}const sy=Math.sin(e.yaw),cy=Math.cos(e.yaw),cp=Math.cos(inp.pitch),sp=Math.sin(inp.pitch);
+ const space=e.layer==='s',raw=hgt(e.x,e.z),fl=Math.max(raw,0);const eOk=e.en>0||a.gen>0,fOk=e.fu>0;
+ const drive=(eOk?a.mE:0)+(fOk?a.mF:0),propT=Math.min(a.prop,drive*3.5),turbT=fOk?a.turb:0,thrT=fOk?a.thr:0;const thrAtm=propT+turbT+thrT,thrVac=thrT;
+ const boost=inp.boost?1.5:1;let use=Math.min(1,Math.abs(f)+Math.abs(r)*.5+Math.abs(u)*.8);let vx=e.vx||0,vy=e.vy||0,vz=e.vz||0;
+ const acc=(cur,tgt,m)=>{const d=tgt-cur,mx=m*dt;return cur+clamp(d,-mx,mx)};
+ let flying=false;e.spin=false;
+ if(space){const T=thrVac,ac=T/a.mass*1.2;const tx=(sy*cp*f-cy*r)*a.spdS*boost,tz=(cy*cp*f+sy*r)*a.spdS*boost,ty=(sp*f+u*.7)*a.spdS*boost;
+  if(T>0&&(f||r||u)){vx=acc(vx,tx,ac*8);vy=acc(vy,ty,ac*8);vz=acc(vz,tz,ac*8)}else if(T>0){const k=Math.max(0,1-.5*dt);vx*=k;vy*=k;vz*=k}
+  if(!(T>0&&(f||r||u)))use=0;e.x=clamp(e.x+vx*dt,-W,W);e.z=clamp(e.z+vz*dt,-W,W);e.y+=vy*dt;
+  if(e.y>300){e.y=300;vy=0}if(e.y<-24){setEntLayer(e,'g');e.y=ALT_TOP-30;vy=Math.min(vy,0)}flying=true;e.spin=use>.05}
+ else{
+  const alt=e.y-fl,canAir=a.air&&thrAtm>0,wantFly=canAir&&(u>0||alt>.6);flying=wantFly||alt>.6;
+  if(flying&&!canAir&&!(a.thrAtm>0)){/* sem empuxo: queda livre */}
+  const hs=Math.hypot(vx,vz),eff=thrAtm/(a.mass*G_ATM)+(a.wingA>0?a.wingA*14/(a.mass*G_ATM)*clamp(hs/Math.max(8,(a.spdA||30)*.5),0,1):0);
+  if(flying){e.spin=thrAtm>0;
+   const ac=thrAtm/a.mass*1.4;const tx=(sy*cp*f-cy*r*.45)*(a.spdA||0)*boost,tz=(cy*cp*f+sy*r*.45)*(a.spdA||0)*boost;
+   if(thrAtm>0){vx=acc(vx,tx,Math.max(3,ac*4));vz=acc(vz,tz,Math.max(3,ac*4))}else{vx*=1-.3*dt;vz*=1-.3*dt}
+   if(eff>=1){const up=clamp((Math.min(eff,3)-1)*8+3,3,22);vy=acc(vy,u*up+sp*f*(a.spdA||0)*.6,40)}else{vy-=(1-clamp(eff,0,1))*G_ATM*dt;vy=Math.max(vy,-45);if(u>0&&eff>.6)vy=Math.max(vy,u*3)}
+   if(thrAtm<=0)use=0}
+  else{ // no chão ou na água
+   const inW=raw<-.8;
+   if(!inW){const gS=a.ground?a.spdG:0,aS=(thrAtm>0&&a.spdA)?a.spdA*.6:0,top=Math.max(gS,aS);
+    if(top>0){const gF=a.ground?Math.min(drive,a.grip*22):0,ac=Math.max(gF,thrAtm*.6)/a.mass*1.6;const sx=Math.sin(e.yaw),sz=Math.cos(e.yaw);const nv=acc(vx*sx+vz*sz,top*f*(f<0?.5:1)*boost,Math.max(2,ac*3));vx=sx*nv;vz=sz*nv;if(aS>gS)e.spin=true}
+    else{vx*=1-2*dt;vz*=1-2*dt;use=0}
+    vy=0;e.y=fl;if(!a.ground&&!thrAtm)use=0;if(u>0&&canAir){vy=3;e.y+=.1;flying=true}}
+   else{ // água
+    if(a.floats){const ac=a.wThr/a.mass*2,sx=Math.sin(e.yaw),sz=Math.cos(e.yaw);const nv=acc(vx*sx+vz*sz,a.spdW*f*(f<0?.5:1)*boost,Math.max(2,ac*3));if(a.wThr>0){vx=sx*nv;vz=sz*nv;e.spin=true}else{vx*=1-1.5*dt;vz*=1-1.5*dt;use=0}e.y=-.2;vy=0;if(u>0&&canAir){vy=3;e.y+=.1}}
+    else{vx*=1-2*dt;vz*=1-2*dt;vy=-6;e.y=Math.max(e.y+vy*dt,raw);use=0;dmgTo(e,6*dt,null)}}}
+  const nx=clamp(e.x+vx*dt,-W,W),nz=clamp(e.z+vz*dt,-W,W),nh=hgt(nx,nz),fl2=!flying;
+  const ok=!fl2||((nh<-.8)?a.floats:a.ground||(a.thrAtm>0));
+  if(ok){e.x=nx;e.z=nz}else{vx=vz=0}
+  if(flying){e.y+=vy*dt;const f2=Math.max(hgt(e.x,e.z),0);if(e.y<=f2+.05){if(vy<-18)dmgTo(e,(-vy-18)*8,null);e.y=f2+.05;vy=0}
+   if(e.y>ALT_TOP){if(a.space){setEntLayer(e,'s');e.y=0;vy=0}else{e.y=ALT_TOP;vy=0}}}
+  collide(e)}
+ e.vx=vx;e.vy=vy;e.vz=vz;
+ if(use>0){e.en-=a.eUse*use*dt;e.fu-=a.fUse*use*dt}if(a.gen>0)e.en+=a.gen*dt;if(a.rFuel&&a.gen>0)e.fu-=a.rFuel*dt;
+ e.en=clamp(e.en,0,a.bat);e.fu=clamp(e.fu,0,a.fuel);if(e.fu<=0&&a.fuel>0&&!e.warnF){e.warnF=1;toast('⛽ Sem combustível!')}if(e.fu>5)e.warnF=0;if(e.en<=0&&a.bat>0&&a.gen<=0&&!e.warnE){e.warnE=1;toast('🔋 Bateria esgotada!')}if(e.en>5)e.warnE=0;
+ if(inp.fire&&e.cd<=0&&e.def.dmg&&e.en>=3){fireAim(e,inp.pitch);e.cd=e.def.cd;e.en-=3}}
+function custTick(dt){for(const e of ents){if(e.dead||!e.def.custom)continue;const a=e.def.an;
+  for(const b of A[e.layer][0]){if(!b.def.drop||b.build<1)continue;if(Math.hypot(b.x-e.x,b.z-e.z)<35+b.r&&Math.abs(b.y-e.y)<60+b.r){e.en=Math.min(a.bat,e.en+60*dt);e.fu=Math.min(a.fuel,e.fu+40*dt);break}}
+  if(e.spin){if(!e.props)e.props=DESIGN[e.type].map((p,i)=>p.f==='prop'?i:-1).filter(i=>i>=0);e.props.forEach(i=>{const m=e.mesh.children[i];if(m)m.rotation.y+=dt*35})}}}
+function fabricate(id){const d=DEF[id];if(!d||!d.an.valid){toast('Projeto inválido — veja a aba Análise');return null}const c=costOf(id),r=S.res;if(r.m<c[0]||r.f<c[1]||r.e<c[2]){toast('Recursos insuficientes: 🔩'+c[0]+' 🌾'+c[1]+' ⚡'+c[2]);return null}
+ r.m-=c[0];r.f-=c[1];r.e-=c[2];const hq=ents.find(e=>e.team===0&&e.type==='hq'&&!e.dead);let x=(hq?hq.x:0)+24+rnd(0,10),z=(hq?hq.z:0)+rnd(-10,10),lay=d.L;
+ if(d.L==='s'){const st=ents.find(e=>e.team===0&&e.layer==='s'&&e.def.drop&&!e.dead);x=(st?st.x:0)+30;z=(st?st.z:0)+rnd(-10,10)}
+ else if(d.naval){const w=findWater(x,z);if(w){x=w.x;z=w.z}}else{const p=findLand(x,z,1);x=p.x;z=p.z}
+ const u=mkEnt(id,0,x,z,{layer:lay});if(u.fly&&u.layer==='g')u.park=true;return u}
+
+/* ---- interface do Estaleiro de Criação ---- */
+const WS={open:false,d:null,sel:0,tab:0,ip:0,view:'ext',scene:new THREE.Scene(),box:null,grp:null,sym:true,msg:''};
+(function(){const s=WS.scene;s.background=new THREE.Color(0x0c1520);s.add(new THREE.HemisphereLight(0xcfe6ff,0x223344,1.1));const l=new THREE.DirectionalLight(0xffffff,.9);l.position.set(5,10,7);s.add(l);const g=new THREE.GridHelper(600,120,0x2fd0ff,0x1a3a4a);g.position.y=-.02;s.add(g)})();
+const TABS=['Peças','Adicionar','Interior','Genoma','Análise'];
+function rowUI(box,label,get,set,min,max,step){const d=document.createElement('div');d.className='edrow';d.innerHTML=`<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}"><input type="number" step="${step}">`;const r=d.children[1],n=d.children[2];r.value=n.value=+(+get()).toFixed(2);r.oninput=()=>{n.value=r.value;set(+r.value)};n.onchange=()=>{r.value=n.value;set(+n.value)};box.appendChild(d)}
+function newDesign(k,seed){const g=defGenome(k||'car',seed||((Math.random()*9999)|0));return{id:'cu'+(custSeq++),name:'Projeto '+(custSeq-1),g,parts:gen(g)}}
+function wsOpen(id){exitFps();cancelBuild();let d=null;if(id&&DEF[id]&&DEF[id].custom){const c=CUST.find(q=>q.id===id);if(c)d=clone(c)}if(!d)d=newDesign('car',1);WS.d=d;WS.sel=0;WS.ip=0;WS.tab=0;WS.view='ext';WS.open=true;ED.open=true;S.paused=true;
+ $('ws').style.display='flex';$('panel').style.display='none';wsList();wsFit();wsModel();wsRender()}
+function wsClose(){WS.open=false;ED.open=false;$('ws').style.display='none';S.paused=false;panelSig=''}
+function wsParts(){return WS.d.parts}
+function wsFit(){const ps=wsParts();let R=1,hy=-1e9,ly=1e9;for(const p of ps){R=Math.max(R,Math.hypot(...p.p)+Math.max(...p.z)/2);hy=Math.max(hy,p.p[1]+p.z[1]/2);ly=Math.min(ly,p.p[1]-p.z[1]/2)}
+ if(WS.view==='room'){const r=wsParts()[WS.sel].in;R=Math.max(r.w,r.d)*.6;ED.tgt.set(0,r.h/2,0)}else ED.tgt.set(0,(hy+ly)/2,0);WS.R=R;ED.R=R;ED.dist=R*2.6+3}
+function wsModel(){if(WS.grp)WS.scene.remove(WS.grp);if(WS.box){WS.scene.remove(WS.box);WS.box=null}const p=wsParts()[WS.sel];let g;
+ if(WS.view==='room'&&p&&p.in){g=new THREE.Group();const kit=intKit(g);addRoom(g,kit,-p.in.w/2,p.in,[{s:'w',c:0,w:3.5},{s:'e',c:0,w:3.5}]);g.traverse(o=>{if(o.isMesh&&o.position.y>=p.in.h-.5)o.visible=false});ED.pitch=.9}
+ else{WS.view='ext';g=modelFor(wsParts(),TC[0]);const m=g.children[WS.sel];if(m){WS.box=new THREE.BoxHelper(m,0xffee00);WS.scene.add(WS.box)}}
+ WS.scene.add(g);WS.grp=g;wsInfo()}
+function wsInfo(){const a=analyze(wsParts());$('wsInfo').innerHTML=(a.valid?'✔ válido':'✖ inválido')+' · '+(a.modes.join('/')||'sem locomoção')+' · '+a.mass.toFixed(0)+' t · 🔩'+a.cost[0]}
+function wsList(){const s=$('wsList');s.innerHTML='<option value="">Meus projetos…</option>'+CUST.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');s.value=CUST.find(c=>c.id===WS.d.id)?WS.d.id:''}
+function wsChange(rb){wsModel();if(rb)wsRender()}
+function partUI(box,p,R,ch,rb,withFn){const top=document.createElement('div');top.className='chips';
+ top.innerHTML='<select class="sh">'+SHAPES.map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')+'</select>'+(withFn?'<select class="fn">'+Object.keys(MOD).map(k=>`<option value="${k}">${MOD[k].ic} ${MOD[k].n}</option>`).join('')+'</select>':'')+'<input type="color" class="co"><label><input type="checkbox" class="tm"> equipe</label><label><input type="checkbox" class="em"> brilho</label>';box.appendChild(top);
+ const sh=top.querySelector('.sh'),co=top.querySelector('.co'),tm=top.querySelector('.tm'),em=top.querySelector('.em'),fn=top.querySelector('.fn');sh.value=p.s;co.value=p.c==='t'?'#2fd0ff':p.c;tm.checked=p.c==='t';em.checked=!!p.e;
+ sh.onchange=()=>{p.s=sh.value;ch(false)};co.oninput=()=>{p.c=co.value;tm.checked=false;ch(false)};tm.onchange=()=>{p.c=tm.checked?'t':co.value;ch(false)};em.onchange=()=>{p.e=em.checked;ch(false)};
+ if(fn){fn.value=p.f||'hull';fn.onchange=()=>{p.f=fn.value;const m=MOD[p.f];if(m.int&&!p.in)p.in=mkIn(m.int,p,(Math.random()*999)|0);if(!m.int)delete p.in;ch(true)}}
+ const Rg=Math.max(10,R*1.4);['X','Y','Z'].forEach((l,i)=>rowUI(box,'Pos '+l,()=>p.p[i],v=>{p.p[i]=v;ch(false)},-Rg,Rg,.05));['X','Y','Z'].forEach((l,i)=>rowUI(box,'Tam '+l,()=>p.z[i],v=>{p.z[i]=v;ch(false)},.05,Rg,.05));['X','Y','Z'].forEach((l,i)=>rowUI(box,'Rot '+l,()=>p.r[i],v=>{p.r[i]=v;ch(false)},-180,180,1));
+ rowUI(box,'Afilar',()=>p.tp==null?((p.s==='cone'||p.s==='pyr')?0:1):p.tp,v=>{p.tp=v;ch(false)},0,1.6,.02);rowUI(box,'Orgânico',()=>p.nz||0,v=>{p.nz=v;if(!p.sd)p.sd=1;ch(false)},0,.8,.02);rowUI(box,'Semente',()=>p.sd||0,v=>{p.sd=v;ch(false)},0,99,1)}
+function wsRender(){const tabs=$('wsTabs');tabs.innerHTML='';TABS.forEach((t,i)=>{const b=document.createElement('button');b.className='btn'+(i===WS.tab?' on':'');b.textContent=t;b.onclick=()=>{WS.tab=i;const v=WS.view;WS.view=(i===2&&wsParts()[WS.sel]&&wsParts()[WS.sel].in)?'room':'ext';if(v!==WS.view){wsFit();wsModel()}wsRender()};tabs.appendChild(b)});
+ $('wsName').value=WS.d.name;const box=$('wsBody');box.innerHTML='';[tabParts,tabAdd,tabInt,tabGen,tabAn][WS.tab](box)}
+function chipsFor(box,list,selKey,onSel,label){const c=document.createElement('div');c.className='chips';list.forEach((p,i)=>{const b=document.createElement('button');b.className='btn'+(i===WS[selKey]?' on':'');b.textContent=(i+1)+' '+label(p);b.onclick=()=>{WS[selKey]=i;onSel()};c.appendChild(b)});box.appendChild(c)}
+function tabParts(box){const ps=wsParts();if(WS.sel>=ps.length)WS.sel=Math.max(0,ps.length-1);chipsFor(box,ps,'sel',()=>{wsModel();wsRender()},p=>(MOD[p.f||'hull']||MOD.hull).ic);
+ const bar=document.createElement('div');bar.className='chips';bar.innerHTML='<button class="btn" data-a="dup">Duplicar</button><button class="btn" data-a="mir">Espelhar X</button><button class="btn" data-a="del">Excluir</button><label>Pintar tudo <input type="color" id="wsPaint" value="#8899aa"></label>';box.appendChild(bar);
+ bar.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const p=ps[WS.sel];if(!p)return;if(b.dataset.a==='dup'){const q=clone(p);q.p[0]+=.6;ps.push(q);WS.sel=ps.length-1}else if(b.dataset.a==='mir'){ps.push(mirror(p));WS.sel=ps.length-1}else{if(ps.length<=1){toast('Mantenha ao menos uma peça');return}ps.splice(WS.sel,1);WS.sel=Math.max(0,WS.sel-1)}wsChange(true)});
+ bar.querySelector('#wsPaint').oninput=e=>{ps.forEach(p=>{if(p.c!=='t')p.c=e.target.value});wsModel()};
+ const p=ps[WS.sel];if(p){const hint=document.createElement('div');hint.style.cssText='opacity:.8;margin:2px 0';hint.textContent=(MOD[p.f||'hull']||MOD.hull).n;box.appendChild(hint);partUI(box,p,WS.R||8,rb=>wsChange(rb),()=>{},true)}}
+function tabAdd(box){const top=document.createElement('div');top.className='chips';top.innerHTML='<label><input type="checkbox" id="wsSym" '+(WS.sym?'checked':'')+'> Simetria (cria o par espelhado)</label>';box.appendChild(top);top.querySelector('#wsSym').onchange=e=>WS.sym=e.target.checked;
+ const info=document.createElement('div');info.style.cssText='opacity:.8;margin:2px 0 6px';info.textContent='A peça nova é colocada em cima da peça selecionada. Tamanho maior = mais potência, mais massa e mais custo.';box.appendChild(info);
+ const grid=document.createElement('div');grid.className='chips';Object.keys(MOD).forEach(id=>{const m=MOD[id],b=document.createElement('button');b.className='btn';b.innerHTML=m.ic+' '+m.n;b.title=descMod(m);b.onclick=()=>{const ps=wsParts(),s=ps[WS.sel],p=M(id,0,0,0,{});if(s){p.p=[s.p[0],s.p[1]+s.z[1]/2+p.z[1]/2,s.p[2]]}if(WS.sym&&['wheel','wing','prop','float','gun','thruster','turbine','track','leg','solar'].includes(id)){p.p[0]=Math.max(p.z[0]*.6,(s?Math.abs(s.p[0]):0)+(s?s.z[0]/2:1)+.3);ps.push(p);ps.push(mirror(p))}else ps.push(p);WS.sel=ps.length-(WS.sym&&p.p[0]>.05&&ps[ps.length-1]!==p?2:1);toast(m.ic+' '+m.n+': '+descMod(m));wsChange(false);wsRender()};grid.appendChild(b)});box.appendChild(grid)}
+function descMod(m){const t=[];if(m.seat)t.push('piloto');if(m.bat)t.push('armazena energia');if(m.gen)t.push('gera energia');if(m.fuel)t.push('guarda combustível');if(m.mE)t.push('motor elétrico (usa energia)');if(m.mF)t.push('motor a combustão (usa combustível)');if(m.grip)t.push('tração no solo (precisa de motor)');if(m.prop)t.push('empuxo no ar/água (precisa de motor); maior = mais forte');if(m.turb)t.push('empuxo a jato (usa combustível)');if(m.thr)t.push('empuxo em qualquer lugar, inclusive espaço (usa combustível)');if(m.wing)t.push('sustentação em velocidade');if(m.buoy)t.push('flutuação');if(m.gun)t.push('arma (usa energia)');if(m.arm)t.push('blindagem pesada');if(m.int)t.push('tem interior');return t.join(', ')||'estrutura'}
+function tabInt(box){const p=wsParts()[WS.sel];if(!p){return}const m=MOD[p.f||'hull'];
+ const h=document.createElement('div');h.style.cssText='opacity:.85;margin-bottom:4px';h.textContent='Peça '+(WS.sel+1)+': '+m.n;box.appendChild(h);chipsFor(box,wsParts(),'sel',()=>{const v=WS.view;WS.view=wsParts()[WS.sel].in?'room':'ext';wsFit();wsModel();wsRender()},q=>(MOD[q.f||'hull']||MOD.hull).ic+(q.in?'🏠':''));
+ if(!p.in){const b=document.createElement('button');b.className='btn';b.textContent='🏠 Criar interior nesta peça';b.onclick=()=>{p.in=mkIn('empty',p,1);WS.view='room';wsFit();wsModel();wsRender()};box.appendChild(b);return}
+ const r=p.in,top=document.createElement('div');top.className='chips';top.innerHTML='<select id="ip">'+INTPRE.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')+'</select><input type="color" id="ic"><button class="btn" id="ig">🎲 Regenerar decoração</button><button class="btn" id="ix">Remover interior</button>';box.appendChild(top);
+ const sel=top.querySelector('#ip'),co=top.querySelector('#ic');sel.value=r.pre;co.value=r.col||'#46576a';
+ sel.onchange=()=>{r.pre=sel.value;r.props=genProps(r.pre,r.w,r.d,r.h,r.seed);WS.ip=0;wsChange(true)};co.oninput=()=>{r.col=co.value;wsModel()};top.querySelector('#ig').onclick=()=>{r.seed=(Math.random()*999)|0;r.props=genProps(r.pre,r.w,r.d,r.h,r.seed);WS.ip=0;wsChange(true)};top.querySelector('#ix').onclick=()=>{delete p.in;WS.view='ext';wsFit();wsModel();wsRender()};
+ rowUI(box,'Largura',()=>r.w,v=>{r.w=v;wsModel()},3,24,1);rowUI(box,'Profund.',()=>r.d,v=>{r.d=v;wsModel()},3,24,1);rowUI(box,'Altura',()=>r.h,v=>{r.h=v;wsModel()},2.4,8,.1);
+ const pt=document.createElement('div');pt.style.cssText='margin-top:6px;font-weight:700';pt.textContent='Objetos do interior ('+r.props.length+')';box.appendChild(pt);
+ if(WS.ip>=r.props.length)WS.ip=Math.max(0,r.props.length-1);chipsFor(box,r.props,'ip',()=>wsRender(),q=>q.s);
+ const bar=document.createElement('div');bar.className='chips';bar.innerHTML='<button class="btn" data-n="box">＋Bloco</button><button class="btn" data-n="cyl">＋Cilindro</button><button class="btn" data-n="sph">＋Esfera</button><button class="btn" data-n="dup">Duplicar</button><button class="btn" data-n="del">Excluir</button>';box.appendChild(bar);
+ bar.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{const n=b.dataset.n;if(n==='del'){if(r.props.length)r.props.splice(WS.ip,1);WS.ip=Math.max(0,WS.ip-1)}else if(n==='dup'){if(r.props[WS.ip]){const q=clone(r.props[WS.ip]);q.p[0]+=.5;r.props.push(q);WS.ip=r.props.length-1}}else{r.props.push(P(n,0,.5,0,1,1,1,'#8899aa'));WS.ip=r.props.length-1}wsChange(true)});
+ const q=r.props[WS.ip];if(q)partUI(box,q,Math.max(r.w,r.d),()=>wsModel(),()=>{},false)}
+function tabGen(box){const g=WS.d.g||(WS.d.g=defGenome('car',1));const top=document.createElement('div');top.className='chips';top.innerHTML='<select id="gk">'+KINDS.map(k=>`<option value="${k[0]}">${k[1]}</option>`).join('')+'</select><button class="btn" id="gg">🧬 Gerar do genoma</button><button class="btn" id="gr">🎲 Aleatório total</button><button class="btn" id="gm">🧪 Mutar</button>';box.appendChild(top);
+ const gk=top.querySelector('#gk');gk.value=g.k;gk.onchange=()=>{g.k=gk.value};
+ const info=document.createElement('div');info.style.cssText='opacity:.8;margin:3px 0';info.textContent='O genoma gera um projeto completo e funcional (com os componentes necessários). Depois você edita qualquer peça. "Gerar" substitui as peças atuais.';box.appendChild(info);
+ rowUI(box,'Semente',()=>g.seed,v=>g.seed=v,1,9999,1);rowUI(box,'Compr.',()=>g.L,v=>g.L=v,.5,2,.05);rowUI(box,'Largura',()=>g.Wd,v=>g.Wd=v,.5,2,.05);rowUI(box,'Altura',()=>g.H,v=>g.H=v,.5,2.2,.05);rowUI(box,'Afilar',()=>g.tp,v=>g.tp=v,.2,1.4,.05);rowUI(box,'Orgânico',()=>g.org,v=>g.org=v,0,.8,.02);rowUI(box,'Detalhes',()=>g.n,v=>g.n=v,2,14,1);rowUI(box,'Cor (hue)',()=>g.hue,v=>g.hue=v,0,360,2);
+ const apply=()=>{WS.d.parts=gen(g);WS.sel=0;WS.view='ext';wsFit();wsModel();wsRender()};
+ top.querySelector('#gg').onclick=apply;
+ top.querySelector('#gr').onclick=()=>{const k=g.k;Object.assign(g,{seed:(Math.random()*9999)|0,L:+(.7+Math.random()*1).toFixed(2),Wd:+(.7+Math.random()*1).toFixed(2),H:+(.7+Math.random()*1).toFixed(2),tp:+(.5+Math.random()*.8).toFixed(2),org:Math.random()<.5?0:+(Math.random()*.5).toFixed(2),n:3+((Math.random()*9)|0),hue:(Math.random()*360)|0,k});apply()};
+ top.querySelector('#gm').onclick=()=>{const R=RNG((Math.random()*1e9)|0);mutate(wsParts(),R,.3);WS.view='ext';wsFit();wsModel();wsRender()}}
+function tabAn(box){const a=analyze(wsParts());const row=(c,t)=>`<div style="color:${c?'#8f8':'#f88'}">${c?'✔':'✖'} ${t}</div>`;
+ let h=a.msgs.map(m=>row(m[0],m[1])).join('');
+ h+=`<div style="margin-top:6px;line-height:1.5">📦 Peças: ${a.n} · Massa: <b>${a.mass.toFixed(0)} t</b> · Vida: <b>${a.hp}</b>${a.dmg?' · Dano '+a.dmg+' · Alcance '+Math.round(a.rng):''}<br>🔋 Bateria: ${Math.round(a.bat)} · ☢ Geração: ${a.gen.toFixed(1)}/s · ⛽ Combustível: ${Math.round(a.fuel)}<br>
+ ⚙ Tração solo: ${a.spdG.toFixed(0)} · 🌀 Empuxo ar: ${Math.round(a.thrAtm)} (empuxo/peso ${a.hover.toFixed(2)}${a.wingA?' + asas '+a.wingR.toFixed(2):''}) · 🚀 Empuxo espaço: ${Math.round(a.thrVac)}<br>
+ 🌊 Flutuação/peso: ${(a.buoy/a.mass).toFixed(2)} ${a.floats?'(flutua)':'(afunda)'}<br>
+ Velocidades — solo ${a.spdG.toFixed(0)} · água ${a.spdW.toFixed(0)} · ar ${a.spdA.toFixed(0)} · espaço ${a.spdS.toFixed(0)}<br>
+ Autonomia: ⚡ ${a.eUse>a.gen?Math.round(a.bat/Math.max(.1,a.eUse-a.gen))+'s':'∞'} · ⛽ ${a.fUse>0?Math.round(a.fuel/(a.fUse+a.rFuel*(a.gen>0?1:0)))+'s':'—'} (em uso total)<br>
+ 💰 Custo: 🔩${a.cost[0]} 🌾${a.cost[1]} ⚡${a.cost[2]} · 👥 ${a.pop} · ⏱ ${a.t}s · 🏠 Interiores: ${a.ints}</div>`;
+ h+=`<div style="margin-top:6px;opacity:.8">Fabricado em: ${a.fac.map(f=>({barracks:'Quartel',launchpad:'Plataforma',shipyard:'Estaleiro Naval',dock:'Estaleiro Orbital',mother:'Nave-Mãe'}[f]||f)).join(', ')} (ou direto pelo botão 🏭).</div>`;box.innerHTML=h}
+function wsSave(){const d=WS.d;d.name=$('wsName').value||d.name;registerCustom(clone(d));saveCustom();refreshType(d.id);wsList();toast('💾 Projeto salvo: '+d.name+(DEF[d.id].an.valid?'':' (inválido: veja a aba Análise)'))}
+function wsInit(){$('wsClose').onclick=wsClose;$('wsSave').onclick=wsSave;$('wsName').oninput=e=>{WS.d.name=e.target.value};
+ $('wsNew').onclick=()=>{WS.d=newDesign('car',1);WS.sel=0;WS.tab=3;WS.view='ext';wsFit();wsModel();wsList();wsRender()};
+ $('wsList').onchange=e=>{const c=CUST.find(q=>q.id===e.target.value);if(c){WS.d=clone(c);WS.sel=0;WS.view='ext';wsFit();wsModel();wsRender()}};
+ $('wsDel').onclick=()=>{const i=CUST.findIndex(c=>c.id===WS.d.id);if(i>=0){CUST.splice(i,1);delete DEF[WS.d.id];saveCustom()}WS.d=newDesign('car',1);WS.sel=0;wsFit();wsModel();wsList();wsRender()};
+ $('wsMake').onclick=()=>{wsSave();const id=WS.d.id;if(!DEF[id].an.valid){toast('Projeto inválido — veja a aba Análise');return}const u=fabricate(id);if(u){wsClose();enterFps(u);toast('🏭 Fabricado! Pilote: WASD, Espaço sobe, E sai/entra')}}}
+
 /* ============== SIMULAÇÃO ============== */
 function setLayer(l){S.layer=l;$('lg').classList.toggle('on',l==='g');$('ls').classList.toggle('on',l==='s');if(BLD.on){cancelBuild()}panelSig='';if(fps.on&&fps.e&&fps.e.layer!==l)exitFps()}
 let accUI=0,accSeen=0,accPop=0,panelSig='';
@@ -645,6 +954,7 @@ function sim(dt){S.t+=dt;A={g:[[],[]],s:[[],[]]};for(const e of ents){if(e.dead)
  if(pl.e&&pl.e.inside){const v=pl.e.inside,a=pl.e;if(v.dead)a.inside=null;else{a.x=v.x;a.z=v.z;a.y=v.y;if(a.layer!==v.layer)setEntLayer(a,v.layer)}}
  if(!pl.e&&!S.over){pl.resp-=dt;if(pl.resp<=0)respawnAvatar()}
  for(const e of ents)if(!e.dead)syncMesh(e);
+ custTick(dt);
  ents=ents.filter(e=>!e.dead);updProj(dt);updFx(dt);
  for(let i=S.timers.length-1;i>=0;i--){const t=S.timers[i];t.t-=dt;if(t.t<=0){S.timers.splice(i,1);t.fn()}}
  S.strikeCd=Math.max(0,S.strikeCd-dt);S.waveT-=dt;if(S.waveT<=0)spawnWave();
@@ -679,19 +989,19 @@ function selPanel(){const p=$('panel');if(fps.on||BLD.on||ED.open){p.style.displ
  if(sig===panelSig){const b=sel[0];if(b.def.k==='b'&&b.q.length){const el=$('qprog');if(el)el.textContent=Math.round(b.q[0].p/DEF[b.q[0].type].t*100)+'%'}return}panelSig=sig;p.style.display='block';
  const one=sel.length===1?sel[0]:null;let h='';
  if(one&&one.def.k==='b'){const e=one,d=e.def;h+=`<h4>${d.n}${e.k>1?' (x'+e.k+')':''} · ❤ ${Math.round(e.hp)}/${Math.round(e.maxhp)} ${e.build<1?'· Em construção '+Math.round(e.build*100)+'%':''}</h4><div class="row">`;
-  if(e.team===0&&e.build>=1&&d.prod){d.prod.forEach(t=>{const c=costOf(t);h+=`<button class="btn" data-q="${t}"><div class="pb"><span>${DEF[t].n}</span><small>🔩${c[0]} 🌾${c[1]} ⚡${c[2]} · 👥${DEF[t].pop}</small></div></button>`});
+  const pf=prodFor(e);if(e.team===0&&e.build>=1&&pf.length){pf.forEach(t=>{const c=costOf(t);h+=`<button class="btn" data-q="${t}"><div class="pb"><span>${DEF[t].n}</span><small>🔩${c[0]} 🌾${c[1]} ⚡${c[2]} · 👥${DEF[t].pop}</small></div></button>`});
    if(e.q.length)h+=`<span class="chip">Fila: ${e.q.map(q=>DEF[q.type].n).join(', ')} <b id="qprog"></b></span>`}
   if(e.team===0&&d.id!=='hq')h+=`<button class="btn" data-demo="1">🗑 Demolir</button>`;
   if(e.team===0)h+=`<button class="btn" data-ed="${e.type}">✏️ Editar modelo</button>`;h+='</div>'}
  else{const by={};sel.forEach(e=>by[e.def.n]=(by[e.def.n]||0)+1);h+='<h4>'+Object.entries(by).map(a=>a[1]+'× '+a[0]).join(' · ')+'</h4><div class="row"><button class="btn" data-stop="1">⏹ Parar</button><button class="btn" data-fps="1">👁 Assumir 1ª pessoa</button>';
   if(sel.some(e=>e.def.role==='builder'))h+='<button class="btn" data-bm="1">🏗 Construir</button>';if(one&&one.team===0)h+=`<button class="btn" data-ed="${one.type}">✏️ Editar modelo</button>`;h+='</div>'}
- p.innerHTML=(one?'<div style="opacity:.9;font-size:12px;margin-bottom:4px">'+(DESC[one.type]||'')+'</div>':'<div style="opacity:.8;font-size:12px;margin-bottom:4px">Toque no chão para mover. Toque num cristal com mineradores, numa obra com construtores ou num inimigo com soldados para dar a ordem certa.</div>')+h;p.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{const bb=sel[0];if(bb){enqueue(bb,b.dataset.q);info(DESC[b.dataset.q])}});
+ p.innerHTML=(one?'<div style="opacity:.9;font-size:12px;margin-bottom:4px">'+(DESC[one.type]||(one.def.custom?custDesc(one.def):''))+'</div>':'<div style="opacity:.8;font-size:12px;margin-bottom:4px">Toque no chão para mover. Toque num cristal com mineradores, numa obra com construtores ou num inimigo com soldados para dar a ordem certa.</div>')+h;p.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{const bb=sel[0];if(bb){enqueue(bb,b.dataset.q);info(DESC[b.dataset.q])}});
  p.querySelectorAll('[data-stop]').forEach(b=>b.onclick=()=>sel.forEach(e=>{e.order=null;e.tgt=null}));p.querySelectorAll('[data-fps]').forEach(b=>b.onclick=enterFps);p.querySelectorAll('[data-bm]').forEach(b=>b.onclick=openBuild);
- p.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>edOpen(b.dataset.ed));p.querySelectorAll('[data-demo]').forEach(b=>b.onclick=()=>{const e=sel[0];const c=costOf(e.type,e.k);S.res.m+=c[0]>>1;kill(e);boom(e.x,e.y,e.z,e.r,e.layer,0xffffff)})}
+ p.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>DEF[b.dataset.ed].custom?wsOpen(b.dataset.ed):edOpen(b.dataset.ed));p.querySelectorAll('[data-demo]').forEach(b=>b.onclick=()=>{const e=sel[0];const c=costOf(e.type,e.k);S.res.m+=c[0]>>1;kill(e);boom(e.x,e.y,e.z,e.r,e.layer,0xffffff)})}
 function openBuild(){if(BLD.on){cancelBuild();uiRefresh();return}exitFps();S.tgtMode=null;BLD.on=true;BLD.type=BUILD[S.layer][0];BLD.k=BLD.k||1;mkGhost();const q=cam[S.layer];moveGhost(q.x,q.z);buildMenu();uiRefresh()}
 function hudTick(){const r=S.res;$('rM').textContent='🔩 '+Math.floor(r.m);$('rF').textContent='🌾 '+Math.floor(r.f);$('rE').textContent='⚡ '+Math.floor(r.e);$('rP').textContent='👥 '+S.popUsed+'/'+S.popCap;$('rW').textContent='⏱ Onda '+(S.wave+1)+' em '+Math.max(0,Math.ceil(S.waveT))+'s';$('rO').textContent='🎯 Ninhos '+S.hives+'/'+S.hives0;
  if(S.ping)S.ping.t-=.25;$('bStrike').style.opacity=S.strikeCd>0?.5:1;
- if(fps.on&&fps.e)$('fpsinfo').textContent=(INT.on?'Interior da Nave-Mãe':(fps.e.pl?'Você (Comandante)':fps.e.def.n))+' · ❤ '+Math.round(fps.e.hp)+'/'+Math.round(fps.e.maxhp)+(fps.e.fly?' · Alt '+Math.round(fps.e.y)+' m':'')+(S.layer==='s'?' · ESPAÇO':'');selPanel();uiRefresh()}
+ if(fps.on&&fps.e)$('fpsinfo').textContent=(INT.on?'Interior da Nave-Mãe':(fps.e.pl?'Você (Comandante)':fps.e.def.n))+' · ❤ '+Math.round(fps.e.hp)+'/'+Math.round(fps.e.maxhp)+(fps.e.fly||(fps.e.def.custom&&fps.e.y>2)?' · Alt '+Math.round(fps.e.y)+' m':'')+(fps.e.def.custom?' · ⚡'+Math.round(fps.e.en)+' ⛽'+Math.round(fps.e.fu):'')+(S.layer==='s'?' · ESPAÇO':'');selPanel();uiRefresh()}
 
 /* ============== EDITOR ============== */
 const ED={open:false,type:'soldier',sel:0,yaw:.7,pitch:.35,dist:14,tgt:new THREE.Vector3(),scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(50,1,.1,2000),group:null,box:null,R:5,sv:0};
@@ -723,8 +1033,8 @@ function edPart(){const box=$('edpart');box.innerHTML='';const p=DESIGN[ED.type]
  const row=(label,arr,i,min,max,step)=>{const d=document.createElement('div');d.className='edrow';d.innerHTML=`<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}"><input type="number" step="${step}">`;const r=d.children[1],n=d.children[2];r.value=n.value=+arr[i].toFixed(2);r.oninput=()=>{n.value=r.value;arr[i]=+r.value;edChange(false)};n.onchange=()=>{r.value=n.value;arr[i]=+n.value;edChange(false)};box.appendChild(d)};
  ['X','Y','Z'].forEach((l,i)=>row('Pos '+l,p.p,i,-R,R,.05));['X','Y','Z'].forEach((l,i)=>row('Tam '+l,p.z,i,.05,R,.05));['X','Y','Z'].forEach((l,i)=>row('Rot '+l,p.r,i,-180,180,1))}
 let edDrag=null;
-function renderEditor(){const w=innerWidth,h=innerHeight,vwE=Math.max(60,w-Math.max(330,w*.5));ED.cam.aspect=vwE/h;ED.cam.updateProjectionMatrix();ED.yaw+=ED.drag?0:.004;const cp=Math.cos(ED.pitch);ED.cam.position.set(ED.tgt.x+Math.sin(ED.yaw)*cp*ED.dist,ED.tgt.y+Math.sin(ED.pitch)*ED.dist,ED.tgt.z+Math.cos(ED.yaw)*cp*ED.dist);ED.cam.lookAt(ED.tgt);if(ED.box)ED.box.update();
- renderer.setScissorTest(true);renderer.setViewport(0,0,vwE,h);renderer.setScissor(0,0,vwE,h);renderer.render(ED.scene,ED.cam);renderer.setScissorTest(false)}
+function renderEditor(){const w=innerWidth,h=innerHeight,vwE=Math.max(60,w-Math.max(330,w*.5));ED.cam.aspect=vwE/h;ED.cam.updateProjectionMatrix();ED.yaw+=ED.drag?0:.004;const cp=Math.cos(ED.pitch);ED.cam.position.set(ED.tgt.x+Math.sin(ED.yaw)*cp*ED.dist,ED.tgt.y+Math.sin(ED.pitch)*ED.dist,ED.tgt.z+Math.cos(ED.yaw)*cp*ED.dist);ED.cam.lookAt(ED.tgt);if(WS.open){if(WS.box)WS.box.update()}else if(ED.box)ED.box.update();
+ renderer.setScissorTest(true);renderer.setViewport(0,0,vwE,h);renderer.setScissor(0,0,vwE,h);renderer.render(WS.open?WS.scene:ED.scene,ED.cam);renderer.setScissorTest(false)}
 
 /* ============== ENTRADA ============== */
 const ptr=new Map();let lastPinch=null;
@@ -766,7 +1076,7 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==
  else if(e.code==='KeyB')openBuild();else if(e.code==='KeyM')edOpen(S.sel[0]&&S.sel[0].team===0?S.sel[0].type:'soldier');
  else if(e.code==='KeyF'||e.code==='KeyC'){fps.on?exitFps():enterFps()}else if(e.code==='KeyE'&&fps.on)interact();else if(e.code==='KeyV')toggleThird();
  else if(e.code==='KeyT')selAll(false);else if(e.code==='KeyY')selAll(true);else if(e.code==='KeyO')startTarget('strike');else if(e.code==='KeyP')startTarget('drop');
- else if(e.code==='Escape'){if(ED.open)edClose();else if(BLD.on){cancelBuild();uiRefresh()}else if(S.tgtMode){S.tgtMode=null;uiRefresh()}else if(fps.on)exitFps();else setSel([])}
+ else if(e.code==='Escape'){if(WS.open)wsClose();else if(ED.open)edClose();else if(BLD.on){cancelBuild();uiRefresh()}else if(S.tgtMode){S.tgtMode=null;uiRefresh()}else if(fps.on)exitFps();else setSel([])}
  else if(e.code==='Digit1')setLayer('g');else if(e.code==='Digit2')setLayer('s');else if(e.code==='KeyP'&&e.shiftKey)togglePause()});
 addEventListener('keyup',e=>{keys[e.code]=false});
 function selAll(mil){setSel(ents.filter(e=>e.team===0&&!e.dead&&e.def.k==='u'&&e.layer===S.layer&&!e.p2&&(!mil||e.def.role==='mil')));toast('Selecionadas: '+S.sel.length)}
@@ -783,10 +1093,10 @@ $('lg').onclick=()=>setLayer('g');$('ls').onclick=()=>setLayer('s');$('bBuild').
 $('bFps').onclick=()=>fps.on?exitFps():enterFps();$('bClear').onclick=()=>setSel([]);$('bAll').onclick=()=>selAll(false);$('bMil').onclick=()=>selAll(true);$('bStrike').onclick=()=>startTarget('strike');$('bDrop').onclick=()=>startTarget('drop');
 $('bCoop').onclick=()=>{S.coop=!S.coop;document.body.classList.toggle('coop',S.coop);if(S.coop){spawnP2();toast('🎮 Jogador 2: setas + Enter (ou controle). Herói dourado no solo.')}else if(p2.e){kill(p2.e);p2.e=null}resize();uiRefresh()};
 function togglePause(){S.paused=!S.paused;$('help').style.display=S.paused?'flex':'none';$('helpD').innerHTML=$('start').querySelector('ul').outerHTML}
-$('bPause').onclick=togglePause;
+$('bPause').onclick=togglePause;$('bWs').onclick=()=>wsOpen();
 $('bMute').onclick=()=>{S.mute=!S.mute;$('bMute').textContent=S.mute?'🔇':'🔊';$('hpMute').textContent=S.mute?'🔇 Mudo':'🔊 Som'};
 const DESC={soldier:'Soldado: infantaria básica que defende a base e ataca inimigos. Barato e rápido de produzir; gasta 1 de população.',miner:'Minerador: coleta 🔩 metal dos cristais (superfície) e leva até o QG/posto. Metal paga quase tudo. Mande para um cristal tocando nele.',builder:'Construtor: ergue e repara construções. Sem ele não dá para construir. Toque numa obra ou prédio danificado com ele selecionado.',farmer:'Agricultor: trabalha numa Fazenda e gera 🌾 comida (até 4 por fazenda). Comida é usada para criar unidades.',tank:'Tanque: blindado pesado com tiro em área. Forte contra grupos e construções, lento para virar. Produzido no Quartel/Fábrica.',apc:'Blindado Hover: rápido e resistente, tiro rápido de baixo dano. Ótimo para flanquear e perseguir.',titan:'Titã Walker: robô colossal. Muita vida e canhões de tiro em área de longo alcance. Caro e usa 5 de população.',hero:'Comandante: seu personagem em 1ª pessoa. Anda, pula (espaço), atira e entra em veículos com E. No co-op, é o herói do jogador 2.',boat:'Lancha de Patrulha: barco rápido de combate para os mares. Só navega na água. Produzida no Estaleiro Naval.',destroyer:'Destróier: navio de guerra com canhões de longo alcance e tiro em área. Domina os mares.',shipyard:'Estaleiro Naval: constrói lanchas e destróieres. Construa perto do mar, pois os barcos nascem na água mais próxima.',engineer:'Nave Engenheira: constrói e repara na órbita (estruturas orbitais só saem com ela).',smine:'Nave Mineradora: coleta 🔩 metal dos asteroides laranja e entrega na estação/nave-mãe.',fighter:'Caça: nave pequena e muito rápida, bom contra drones e para defender estações. Frota barata.',frigate:'Fragata: nave de guerra média, tiro em área. Habilita o ☄️ Ataque Orbital (junto com Nave-Mãe e Estaleiro).',mother:'Nave-Mãe: nave colossal com INTERIOR visitável (E ao atracar): hangar, ponte de comando, engenharia e teletransporte. Fabrica caças/engenheiras, libera o Drop Pod e recebe metal.',hq:'Quartel-General: seu coração em terra. Cria mineradores, construtores, agricultores e soldados, recebe o metal coletado e dá +10 de população. Se perder todas as bases/estações/naves-mãe, você perde.',outpost:'Posto Avançado: mini-base para expandir. Recebe recursos dos mineradores, cria unidades básicas e dá +5 de população.',farm:'Fazenda Hidropônica: produz 🌾 comida. Rende muito mais com agricultores trabalhando nela.',solar:'Painel Solar: gera ⚡ energia continuamente. Energia é exigida por tanques, naves, torres e ataque orbital.',mine:'Perfuratriz Automática: gera 🔩 metal sozinha, sem precisar de minerador.',turret:'Torre de Defesa: atira automaticamente em inimigos que chegarem perto. Coloque na borda da base.',wall:'Muralha: bloqueia a passagem; inimigos precisam destruí-la. Barata e resistente.',barracks:'Quartel/Fábrica: produz soldados, tanques, blindados hover e Titãs.',city:'Distrito Urbano: moradias. Aumenta o limite de população (+12), permitindo ter mais unidades. Em escala Colossal vira uma cidade enorme.',launchpad:'Plataforma de Lançamento: manda engenheiras, mineradoras e caças da superfície para a órbita. Primeiro passo para ter frota.',station:'Estação Orbital: sua base no espaço. Recebe metal dos mineradores orbitais e cria engenheiras, mineradoras e caças (+8 de população).',dock:'Estaleiro Orbital: fabrica TODAS as naves, inclusive fragata e Nave-Mãe. Também habilita o ☄️ Ataque Orbital.',oturret:'Torre Orbital: canhão automático que defende suas estações no espaço.',sarray:'Painel Solar Orbital: gera ⚡ energia no espaço, mais que o terrestre.',habitat:'Anel Habitacional: moradias orbitais. Aumenta o limite de população (+16).',hydro:'Estufa Orbital: produz 🌾 comida no espaço sem precisar de agricultores.',grunt:'Alienígena: infantaria inimiga. Ataca em grupo.',crawler:'Alienígena: besta blindada inimiga com tiro em área.',behemoth:'Alienígena chefe terrestre: enorme e perigoso. Concentre fogo.',drone:'Alienígena: nave rápida e fraca, aparece em enxames.',cruiser:'Alienígena: nave de guerra inimiga com tiro em área.',leviathan:'Alienígena chefe orbital: nave colossal. Leve a Nave-Mãe e frota grande.',hive:'Colmeia alienígena: ninho inimigo na superfície. Gera tropas sem parar. Destruí-la conta para o objetivo 🎯.',spire:'Espinho alienígena: torre de defesa inimiga.',nest:'Ninho orbital alienígena: gera naves inimigas. Destruí-lo conta para o objetivo 🎯.',sspire:'Espinho orbital alienígena: torre de defesa inimiga no espaço.'};
-const BTNINFO={bBuild:'🏗 Construir: abre o menu de construções da camada atual. Escolha o prédio, a escala (Colossal = mais vida/produção e mais custo) e toque no mapa. Precisa de construtor.',bEdit:'✏️ Editor: abre o editor 3D para mudar peças, cores e formas da unidade/nave/base selecionada. Vale para todas desse tipo; peças maiores = mais vida e mais custo.',bFps:'👁 1ª pessoa / 🎥 Comando: alterna entre andar e pilotar pelo mundo (1ª pessoa) e a visão de cima, usada só para construir e mandar unidades.',bClear:'✖ Limpar: cancela a seleção atual.',bAll:'🟦 Todas: seleciona todas as unidades móveis da camada atual para dar uma ordem em grupo.',bMil:'⚔️ Militares: seleciona só soldados, tanques, naves de combate etc., sem trabalhadores.',bStrike:'☄️ Ataque Orbital: bombardeio da órbita na superfície (dano enorme em área). Custa 120 ⚡, recarga 30 s, e exige Fragata, Nave-Mãe ou Estaleiro. Toque no alvo na superfície.',bDrop:'📦 Drop Pod: a Nave-Mãe lança 4 soldados no ponto escolhido da superfície. Custa 60 🔩 e 20 🌾 e precisa de espaço de população.',bCoop:'🎮 Co-op local: divide a tela. O jogador 2 controla um herói dourado no solo com setas + Enter ou um controle.',bPause:'⏸ Pausa: pausa o jogo e mostra a ajuda; tem opção de novo mundo e som.',bBig:'🔍 Botões maiores: aumenta botões e textos para telas pequenas.',bFull:'⛶ Tela cheia: esconde as barras do navegador.',lg:'🌍 Superfície: mostra a frente terrestre. As duas frentes continuam rodando ao mesmo tempo.',ls:'🛰 Órbita: mostra o espaço, onde ficam naves, estações e asteroides.',rM:'🔩 Metal: recurso principal; paga unidades e construções. Venha de mineradores e perfuratrizes.',rF:'🌾 Comida: necessária para criar unidades. Vem de fazendas e estufas.',rE:'⚡ Energia: exigida por unidades pesadas, torres e ataque orbital. Vem de painéis solares.',rP:'👥 População: unidades usadas/limite. Para aumentar, construa Distritos Urbanos ou Anéis Habitacionais.',rW:'⏱ Próxima onda de invasão alienígena. Prepare defesas antes do contador chegar a zero.',rO:'🎯 Objetivo: ninhos alienígenas restantes / total. Descubra-os explorando e destrua-os.'};
+const BTNINFO={bWs:'🛠 Estaleiro de Criação: monte veículos, naves e bases peça por peça (vários formatos), com componentes que funcionam (bateria, combustível, motor, rodas, hélice, turbina, asas, flutuadores), interior editável e genoma/aleatório.',bBuild:'🏗 Construir: abre o menu de construções da camada atual. Escolha o prédio, a escala (Colossal = mais vida/produção e mais custo) e toque no mapa. Precisa de construtor.',bEdit:'✏️ Editor: abre o editor 3D para mudar peças, cores e formas da unidade/nave/base selecionada. Vale para todas desse tipo; peças maiores = mais vida e mais custo.',bFps:'👁 1ª pessoa / 🎥 Comando: alterna entre andar e pilotar pelo mundo (1ª pessoa) e a visão de cima, usada só para construir e mandar unidades.',bClear:'✖ Limpar: cancela a seleção atual.',bAll:'🟦 Todas: seleciona todas as unidades móveis da camada atual para dar uma ordem em grupo.',bMil:'⚔️ Militares: seleciona só soldados, tanques, naves de combate etc., sem trabalhadores.',bStrike:'☄️ Ataque Orbital: bombardeio da órbita na superfície (dano enorme em área). Custa 120 ⚡, recarga 30 s, e exige Fragata, Nave-Mãe ou Estaleiro. Toque no alvo na superfície.',bDrop:'📦 Drop Pod: a Nave-Mãe lança 4 soldados no ponto escolhido da superfície. Custa 60 🔩 e 20 🌾 e precisa de espaço de população.',bCoop:'🎮 Co-op local: divide a tela. O jogador 2 controla um herói dourado no solo com setas + Enter ou um controle.',bPause:'⏸ Pausa: pausa o jogo e mostra a ajuda; tem opção de novo mundo e som.',bBig:'🔍 Botões maiores: aumenta botões e textos para telas pequenas.',bFull:'⛶ Tela cheia: esconde as barras do navegador.',lg:'🌍 Superfície: mostra a frente terrestre. As duas frentes continuam rodando ao mesmo tempo.',ls:'🛰 Órbita: mostra o espaço, onde ficam naves, estações e asteroides.',rM:'🔩 Metal: recurso principal; paga unidades e construções. Venha de mineradores e perfuratrizes.',rF:'🌾 Comida: necessária para criar unidades. Vem de fazendas e estufas.',rE:'⚡ Energia: exigida por unidades pesadas, torres e ataque orbital. Vem de painéis solares.',rP:'👥 População: unidades usadas/limite. Para aumentar, construa Distritos Urbanos ou Anéis Habitacionais.',rW:'⏱ Próxima onda de invasão alienígena. Prepare defesas antes do contador chegar a zero.',rO:'🎯 Objetivo: ninhos alienígenas restantes / total. Descubra-os explorando e destrua-os.'};
 let infoT=0;function info(t){const i=$('info');i.textContent=t;i.style.display='block';clearTimeout(infoT);infoT=setTimeout(()=>i.style.display='none',6500)}
 for(const id in BTNINFO){const el=$(id);if(el)el.addEventListener('click',()=>info(BTNINFO[id]))}
 function setBig(v){document.body.classList.toggle('big',v);$('bBig').classList.toggle('on',v);try{localStorage.setItem('imperio_big',v?'1':'')}catch(e){}}
@@ -820,9 +1130,9 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
  draw2d();if(!INT.on)drawMini()}
 let lastPt='';
 // piscar ao receber dano (simples: escurece com hit)
-edInit();newWorld();resize();requestAnimationFrame(frame);
+edInit();wsInit();newWorld();resize();requestAnimationFrame(frame);
 $('start').querySelector('.box').insertAdjacentHTML('beforeend','<div style="opacity:.6;margin-top:8px;font-size:11px;text-align:center">Seus projetos de unidades ficam salvos neste aparelho.</div>');
-window.G={pl,INT,interact,enterInterior,exitFps,findWater,setEntLayer,landPoint,S,ents:()=>ents,DEF,DESIGN,mkEnt,cam,fps,p2,BLD,command,setSel,enterFps,startTarget,execTarget,newWorld,edOpen,edClose,nodes:()=>nodes,spawnWave,openBuild,placeBuilding,moveGhost,enqueue,setLayer,ED};
+window.G={WS,analyze,gen,defGenome,registerCustom,fabricate,wsOpen,KINDS,CUST,MOD,custTick,driveCustom,pl,INT,interact,enterInterior,exitFps,findWater,setEntLayer,landPoint,S,ents:()=>ents,DEF,DESIGN,mkEnt,cam,fps,p2,BLD,command,setSel,enterFps,startTarget,execTarget,newWorld,edOpen,edClose,nodes:()=>nodes,spawnWave,openBuild,placeBuilding,moveGhost,enqueue,setLayer,ED};
 </script>
 </body>
 </html>
